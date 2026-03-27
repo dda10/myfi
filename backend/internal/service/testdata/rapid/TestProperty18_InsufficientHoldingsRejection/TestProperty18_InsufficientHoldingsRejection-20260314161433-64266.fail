@@ -1,0 +1,48 @@
+# 2026/03/14 16:14:33.187247 [TestProperty18_InsufficientHoldingsRejection] [rapid] draw userID: 2
+# 2026/03/14 16:14:33.187250 [TestProperty18_InsufficientHoldingsRejection] [rapid] draw assetType: "vn_stock"
+# 2026/03/14 16:14:33.187254 [TestProperty18_InsufficientHoldingsRejection] [rapid] draw symbol: "AAA"
+# 2026/03/14 16:14:33.187255 [TestProperty18_InsufficientHoldingsRejection] [rapid] draw sellPrice: 1
+# 2026/03/14 16:14:33.187282 [TestProperty18_InsufficientHoldingsRejection] [rapid] draw buyQty: 1
+# 2026/03/14 16:14:33.187285 [TestProperty18_InsufficientHoldingsRejection] [rapid] draw buyPrice: 1
+# 2026/03/14 16:14:33.187331 [TestProperty18_InsufficientHoldingsRejection] ProcessBuy failed: failed to record buy transaction: failed to insert transaction: FOREIGN KEY constraint failed
+# 
+v0.4.8#13933673770361447903
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0

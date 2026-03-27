@@ -1,0 +1,44 @@
+# 2026/03/14 16:14:33.175978 [TestProperty17_NAVAggregation] [rapid] draw userID: 2
+# 2026/03/14 16:14:33.175983 [TestProperty17_NAVAggregation] [rapid] draw numHoldings: 1
+# 2026/03/14 16:14:33.175984 [TestProperty17_NAVAggregation] [rapid] draw assetType: "vn_stock"
+# 2026/03/14 16:14:33.175988 [TestProperty17_NAVAggregation] [rapid] draw symbol: "AAA"
+# 2026/03/14 16:14:33.175990 [TestProperty17_NAVAggregation] [rapid] draw qty: 1
+# 2026/03/14 16:14:33.175993 [TestProperty17_NAVAggregation] [rapid] draw price: 1
+# 2026/03/14 16:14:33.176072 [TestProperty17_NAVAggregation] ProcessBuy failed: failed to record buy transaction: failed to insert transaction: FOREIGN KEY constraint failed
+# 
+v0.4.8#11877168572089768050
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0

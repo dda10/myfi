@@ -1,0 +1,231 @@
+# Implementation Plan: Go Project Layout Restructuring
+
+## Overview
+
+Migrate the myfi-backend from a flat `package main` layout to the Go Server project layout (`cmd/server/main.go` + `internal/` sub-packages). The migration follows a bottom-up dependency order: model → infra → service → handler → cmd/server → tests → cleanup. Each step must compile before proceeding to the next.
+
+## Tasks
+
+- [x] 1. Create `internal/model/` package with shared types
+  - [x] 1.1 Create `internal/model/asset_types.go` with `AssetType`, its constants (`VNStock`, `Crypto`, `Gold`, `Savings`, `Bond`, `Cash`), `ValidAssetTypes`, and `ValidateAssetType`
+    - Extract from `price_service.go` and `asset_registry.go`
+    - Package declaration: `package model`
+    - _Requirements: 5.1, 5.2, 5.3, 5.4_
+  - [x] 1.2 Create `internal/model/transaction_types.go` with `TransactionType`, its constants, `ValidTransactionTypes`, and `ValidateTransactionType`
+    - Extract from `transaction_ledger.go`
+    - _Requirements: 5.1, 5.2_
+  - [x] 1.3 Create `internal/model/sector_types.go` with `ICBSector`, `AllICBSectors`, `SectorNameMap`, `SectorTrend`, `SectorPerformance`, `SectorAverages`
+    - Extract from `sector_service.go`
+    - _Requirements: 5.1, 5.2_
+  - [x] 1.4 Create `internal/model/savings_types.go` with `CompoundingFrequency`, `ValidCompoundingFrequencies`, `CompoundingPeriodsPerYear`, `ValidateCompoundingFrequency`
+    - Extract from `savings_tracker.go`
+    - _Requirements: 5.1, 5.2_
+  - [x] 1.5 Create `internal/model/data_category.go` with `DataCategory` constants and `SourcePreference`
+    - Extract from `data_source_router.go`
+    - _Requirements: 5.1, 5.2_
+  - [x] 1.6 Create `internal/model/price_types.go` with `PriceQuote`, `OHLCVBar`, `FXRate`, `GoldPriceResponse`, `CryptoPriceResponse`, `CoinGeckoResponse`
+    - Extract from `price_service.go`, `fx_service.go`, `gold_service.go`, `crypto_service.go`
+    - _Requirements: 5.1, 5.2_
+  - [x] 1.7 Create `internal/model/market_types.go` with `ListingData`, `CompanyData`, `FinancialReportData`, `TradingStatistics`, `MarketStatistics`, `ValuationMetrics` and sub-types
+    - Extract from `market_data_service.go`
+    - _Requirements: 5.1, 5.2_
+  - [x] 1.8 Create `internal/model/handler_types.go` with `ChatRequest`, `ModelsRequest`, `RSS`, `Channel`, `Item`, `ScreenerStock`
+    - Extract from `agent.go`, `news.go`, `market.go`
+    - _Requirements: 5.1, 5.2_
+  - [x] 1.9 Create `internal/model/portfolio_types.go` with `Transaction`, `Asset`, `SavingsAccount`, `PortfolioSummary`, `HoldingDetail`, `SellResult`, `ScreenerFilters`, `ScreenerResult`, `ScreenerResponse`, `FilterPreset`, `CommodityPrice`, `CommodityData`, `MacroIndicator`, `MacroData`, `FundInfo`, `FundNAV`, `FundPerformance`, `Watchlist`, `WatchlistSymbol`, `PerformanceMetrics`, `NAVSnapshot`, `BenchmarkData`, `CashFlowEvent`, `TimePeriod`, `ValuationSeries`, `PerformanceSeries`, `CorrelationResult` and related sub-types
+    - Extract from `portfolio_engine.go`, `transaction_ledger.go`, `asset_registry.go`, `savings_tracker.go`, `screener_service.go`, `commodity_service.go`, `macro_service.go`, `fund_service.go`, `watchlist_service.go`, `performance_engine.go`, `comparison_engine.go`
+    - _Requirements: 5.1, 5.2_
+  - [x] 1.10 Create `internal/model/rate_limit_types.go` with `RateLimitMetrics` struct
+    - Extract from `rate_limiter.go` (used by handler for metrics endpoint)
+    - _Requirements: 5.1, 5.2_
+
+- [x] 2. Create `internal/infra/` package with infrastructure code
+  - [x] 2.1 Create `internal/infra/cache.go` — move `Cache`, `CacheEntry`, `NewCache` and all methods
+    - Change package declaration to `package infra`
+    - Import `model` package if any shared types are needed
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - [x] 2.2 Create `internal/infra/database.go` — move `InitDB`, `CloseDB`, `AllMigrations`, `runMigrations`, and all migration constants
+    - Change `InitDB()` to return `(*sql.DB, error)` instead of setting global `var db`
+    - Change `CloseDB` to accept `db *sql.DB` parameter
+    - Change `runMigrations` to accept `db *sql.DB` parameter
+    - _Requirements: 4.1, 4.2, 4.3, 12.1_
+  - [x] 2.3 Create `internal/infra/circuit_breaker.go` — move `CircuitBreaker`, `CircuitState`, `NewCircuitBreaker` and all methods
+    - `CircuitState` stays in infra (used only within infra)
+    - _Requirements: 4.1, 4.2, 4.3_
+  - [x] 2.4 Create `internal/infra/rate_limiter.go` — move `RateLimiter`, `RateLimit`, `NewRateLimiter` and all methods
+    - `RateLimitMetrics` struct moves to `model/` since it's used by handler; `GetMetrics`/`GetAllMetrics` return `model.RateLimitMetrics`
+    - _Requirements: 4.1, 4.2, 4.3_
+  - [x] 2.5 Create `internal/infra/data_source_router.go` — move `DataSourceRouter`, `NewDataSourceRouter` and all methods
+    - Replace `DataCategory` and `SourcePreference` references with `model.DataCategory` and `model.SourcePreference`
+    - Add `RateLimiter() *RateLimiter` getter method to expose the unexported `rateLimiter` field
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+- [x] 3. Checkpoint — Verify model and infra compile
+  - Run `go build myfi-backend/internal/model` and `go build myfi-backend/internal/infra` from `backend/`
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 4. Create `internal/service/` package with business logic
+  - [x] 4.1 Create `internal/service/price_service.go` — move `PriceService`, `NewPriceService` and all methods
+    - Replace type references with `model.PriceQuote`, `model.OHLCVBar`, `model.AssetType`, etc.
+    - Import `myfi-backend/internal/infra` and `myfi-backend/internal/model`
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+  - [x] 4.2 Create `internal/service/crypto_service.go` — move `CryptoService` and all methods
+    - Update imports to reference `model` and `infra` packages
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.3 Create `internal/service/gold_service.go` — move `GoldService`, `NewGoldService` and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.4 Create `internal/service/fx_service.go` — move `FXService`, `NewFXService` and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.5 Create `internal/service/savings_tracker.go` — move `SavingsTracker` and all methods
+    - Replace `CompoundingFrequency` references with `model.CompoundingFrequency`
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.6 Create `internal/service/watchlist_service.go` — move watchlist service and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.7 Create `internal/service/screener_service.go` — move screener service and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.8 Create `internal/service/sector_service.go` — move `SectorService`, `NewSectorService` and all methods
+    - Keep unexported `sectorKeywords` map in this file
+    - Replace `ICBSector` references with `model.ICBSector`
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.9 Create `internal/service/commodity_service.go` — move `CommodityService`, `NewCommodityService` and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.10 Create `internal/service/fund_service.go` — move `FundService`, `NewFundService` and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.11 Create `internal/service/macro_service.go` — move `MacroService`, `NewMacroService` and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.12 Create `internal/service/market_data_service.go` — move `MarketDataService`, `NewMarketDataService` and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.13 Create `internal/service/portfolio_engine.go` — move `PortfolioEngine` and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.14 Create `internal/service/performance_engine.go` — move `PerformanceEngine` and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.15 Create `internal/service/comparison_engine.go` — move `ComparisonEngine` and all methods
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.16 Create `internal/service/transaction_ledger.go` — move `TransactionLedger` and all methods
+    - Replace `TransactionType` references with `model.TransactionType`
+    - _Requirements: 3.1, 3.2, 3.3_
+  - [x] 4.17 Create `internal/service/asset_registry.go` — move `AssetRegistry`, `NewAssetRegistry` and all methods
+    - Replace `Asset`, `AssetType` references with `model.Asset`, `model.AssetType`
+    - _Requirements: 3.1, 3.2, 3.3_
+
+- [x] 5. Checkpoint — Verify service package compiles
+  - Run `go build myfi-backend/internal/service` from `backend/`
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 6. Create `internal/handler/` package with HTTP handlers and `Handlers` struct
+  - [x] 6.1 Create `internal/handler/handlers.go` — define the `Handlers` struct with all service dependencies as fields
+    - Fields: `VnstockClient *vnstock.Client`, `DataSourceRouter *infra.DataSourceRouter`, `FXService *service.FXService`, `SharedCache *infra.Cache`, `GoldService *service.GoldService`, `PriceService *service.PriceService`, `SectorService *service.SectorService`, `MarketDataService *service.MarketDataService`, `FundService *service.FundService`, `CommodityService *service.CommodityService`, `MacroService *service.MacroService`, plus DB and other service fields as needed
+    - No package-level `var` declarations for service instances
+    - _Requirements: 2.2, 2.5, 12.2, 12.3_
+  - [x] 6.2 Create `internal/handler/routes.go` — implement `SetupRouter(h *Handlers) *gin.Engine` with CORS middleware and all route registrations
+    - Register all existing routes with identical paths: `/api/health`, `/api/metrics/rate-limits`, `/api/market/quote`, `/api/market/chart`, `/api/market/listing`, `/api/market/screener`, `/api/market/company/:symbol`, `/api/market/finance/:symbol`, `/api/market/trading/:symbol`, `/api/market/statistics`, `/api/market/valuation`, `/api/market/funds`, `/api/market/commodities`, `/api/market/macro`, `/api/market/trading/batch`, `/api/crypto/quote`, `/api/prices/fx`, `/api/news`, `/api/chat`, `/api/models`
+    - CORS middleware must be identical to current `main.go` (allow all origins, same headers/methods)
+    - _Requirements: 8.1, 8.2, 8.3, 8.4_
+  - [x] 6.3 Create `internal/handler/market.go` — move all market handler functions as methods on `*Handlers`
+    - Rename: `handleMarketQuote` → `HandleMarketQuote`, `handleMarketChart` → `HandleMarketChart`, etc.
+    - Replace global variable access (`dataSourceRouter`, `sharedCache`, etc.) with `h.DataSourceRouter`, `h.SharedCache`, etc.
+    - Remove the `init()` function entirely (replaced by explicit construction in cmd/server)
+    - Remove all 11 package-level `var` declarations
+    - _Requirements: 2.1, 2.3, 2.5, 2.6, 12.2, 12.3_
+  - [x] 6.4 Create `internal/handler/crypto.go` — move `handleCryptoQuote` as `HandleCryptoQuote` method on `*Handlers`
+    - _Requirements: 2.1, 2.3, 2.6_
+  - [x] 6.5 Create `internal/handler/news.go` — move `handleNews` as `HandleNews` method on `*Handlers`
+    - Move `RSS`, `Channel`, `Item` types to `model/handler_types.go` (done in task 1.8)
+    - _Requirements: 2.1, 2.3, 2.6_
+  - [x] 6.6 Create `internal/handler/agent.go` — move `handleChat`, `handleModels`, `initLLM`, `getLLM`, `analyzeMarketData` as exported methods on `*Handlers`
+    - Move `ChatRequest`, `ModelsRequest` types to `model/handler_types.go` (done in task 1.8)
+    - `analyzeMarketData` uses `h.VnstockClient` instead of global `vnstockClient`
+    - _Requirements: 2.1, 2.3, 2.6_
+
+- [x] 7. Create `cmd/server/main.go` entry point
+  - [x] 7.1 Create `backend/cmd/server/main.go` with `package main`
+    - Import `myfi-backend/internal/handler`, `myfi-backend/internal/infra`, `myfi-backend/internal/service`
+    - Initialize database via `infra.InitDB()` (returns `*sql.DB, error`), log.Fatalf on failure
+    - Construct `infra.NewCache()`, `infra.NewDataSourceRouter()`, `infra.NewCircuitBreaker()`
+    - Construct all services: `service.NewFXService(...)`, `service.NewGoldService(...)`, `service.NewPriceService(...)`, `service.NewSectorService(...)`, `service.NewMarketDataService(...)`, `service.NewFundService(...)`, `service.NewCommodityService(...)`, `service.NewMacroService(...)`
+    - Construct `handler.Handlers` struct with all dependencies
+    - Call `handler.SetupRouter(h)` and `r.Run(":8080")`
+    - Call `initLLM()` equivalent (now `handler.InitLLM()` or inline)
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
+
+- [x] 8. Checkpoint — Verify full compilation
+  - Run `go build ./...` from `backend/` directory
+  - Run `go vet ./...` from `backend/` directory
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 9. Migrate test files and test utilities
+  - [x] 9.1 Create `internal/testutil/testhelper.go` — move `setupPostgresTestDB` from `testhelper_test.go`
+    - Change package to `package testutil`
+    - Change filename from `_test.go` to `.go` (so it can be imported cross-package)
+    - Export function: `setupPostgresTestDB` → `SetupPostgresTestDB`
+    - Update `AllMigrations()` call to `infra.AllMigrations()`
+    - _Requirements: 7.5_
+  - [x] 9.2 Move service test files to `internal/service/`
+    - Move: `crypto_service_test.go`, `gold_service_test.go`, `fx_service_test.go`, `price_service_test.go`, `portfolio_engine_test.go`, `portfolio_engine_property_test.go`, `transaction_ledger_test.go`, `asset_registry_test.go`, `savings_tracker_test.go`, `checkpoint_price_services_test.go`
+    - Update package declarations to `package service`
+    - Update imports to use `myfi-backend/internal/model`, `myfi-backend/internal/infra`, `myfi-backend/internal/testutil`
+    - Replace `setupPostgresTestDB(t)` calls with `testutil.SetupPostgresTestDB(t)`
+    - _Requirements: 7.1, 7.2, 7.3, 7.4_
+  - [x] 9.3 Move `data_source_router_test.go` to `internal/infra/`
+    - Update package declaration to `package infra`
+    - Update `DataCategory` references to `model.DataCategory`
+    - _Requirements: 7.1, 7.2, 7.3_
+  - [x] 9.4 Move `testdata/rapid/` directory to `internal/service/testdata/rapid/`
+    - _Requirements: 7.6_
+
+- [x] 10. Checkpoint — Verify all tests pass
+  - Run `go test ./...` from `backend/` directory
+  - Run `go vet ./...` from `backend/` directory
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ]* 11. Write property-based tests for structural correctness
+  - [ ]* 11.1 Write property test: Handler functions are exported
+    - **Property 1: Handler Functions Are Exported**
+    - Scan all `.go` files in `internal/handler/`, verify all handler methods on `*Handlers` start with uppercase
+    - **Validates: Requirements 2.3**
+  - [ ]* 11.2 Write property test: No package-level service globals in handler
+    - **Property 3: No Package-Level Service Globals in Handler**
+    - Scan all `.go` files in `internal/handler/`, verify no `var` declarations for service instances
+    - **Validates: Requirements 2.5, 12.2**
+  - [ ]* 11.3 Write property test: Acyclic package dependency direction
+    - **Property 5: Acyclic Package Dependency Direction**
+    - Parse import statements in all internal packages, verify `model` imports zero internal packages, `infra` imports only `model`, `service` imports only `infra` and `model`, `handler` imports only `service`, `infra`, and `model`
+    - **Validates: Requirements 4.4, 5.3, 11.1**
+  - [ ]* 11.4 Write property test: Correct internal import paths
+    - **Property 6: Correct Internal Import Paths**
+    - Scan all `.go` files, verify all internal imports use `myfi-backend/internal/<package>` format
+    - **Validates: Requirements 6.1, 7.3**
+  - [ ]* 11.5 Write property test: All API routes registered with identical paths
+    - **Property 7: All API Routes Registered with Identical Paths**
+    - Verify `SetupRouter` registers all 20 routes with correct HTTP methods and paths
+    - **Validates: Requirements 8.1**
+
+- [x] 12. Clean up old flat-layout files and update steering docs
+  - [x] 12.1 Delete old flat-layout source files from `backend/` root
+    - Remove: `market.go`, `crypto.go`, `news.go`, `agent.go`, `cache.go`, `database.go`, `circuit_breaker.go`, `rate_limiter.go`, `data_source_router.go`, `price_service.go`, `crypto_service.go`, `gold_service.go`, `fx_service.go`, `savings_tracker.go`, `watchlist_service.go`, `screener_service.go`, `sector_service.go`, `commodity_service.go`, `fund_service.go`, `macro_service.go`, `market_data_service.go`, `portfolio_engine.go`, `performance_engine.go`, `comparison_engine.go`, `transaction_ledger.go`, `asset_registry.go`
+    - Remove old `main.go` from `backend/` root
+    - Remove old test files from `backend/` root
+    - Remove old `testhelper_test.go` from `backend/` root
+    - _Requirements: 6.1_
+  - [x] 12.2 Update `.kiro/steering/structure.md` to reflect new backend directory tree
+    - Show `cmd/server/`, `internal/handler/`, `internal/service/`, `internal/infra/`, `internal/model/`, `internal/testutil/`
+    - _Requirements: 10.1_
+  - [x] 12.3 Update `.kiro/steering/tech.md` to reflect new build/run commands
+    - Change `go run .` to `go run ./cmd/server`
+    - Document package dependency direction
+    - _Requirements: 10.2, 10.3_
+  - [x] 12.4 Run `go mod tidy` from `backend/` directory
+    - _Requirements: 9.2, 9.3_
+
+- [x] 13. Final verification checkpoint
+  - Run `go build ./...`, `go vet ./...`, `go test ./...` from `backend/` directory
+  - Verify `go run ./cmd/server` starts and listens on port 8080
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for faster MVP
+- Each task references specific requirements for traceability
+- The migration order (model → infra → service → handler → cmd/server) ensures each layer compiles before its dependents are moved
+- Property tests validate structural correctness of the migration
+- Old flat-layout files are only deleted after full verification passes

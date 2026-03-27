@@ -1,0 +1,28 @@
+# 2026/03/14 23:58:22.072154 [TestProperty16_UnrealizedPLCalculation] [rapid] draw qty: 8192.000000715256
+# 2026/03/14 23:58:22.072165 [TestProperty16_UnrealizedPLCalculation] [rapid] draw avgCost: 1
+# 2026/03/14 23:58:22.072166 [TestProperty16_UnrealizedPLCalculation] [rapid] draw currentPrice: 1e+08
+# 2026/03/14 23:58:22.072167 [TestProperty16_UnrealizedPLCalculation] P&L: got 819199991879.525635, want 819199991879.525513
+# 2026/03/14 23:58:22.072169 [TestProperty16_UnrealizedPLCalculation] P&L pct: got 9999999900.000002, want 9999999900.000000
+# 
+v0.4.8#14492640440115641380
+0x0
+0x0
+0x9867f1f40f739
+0xd
+0x0
+0x16
+0x60000
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1f2b5a0e61c3a6
+0x0
+0x0
+0x0
+0x0

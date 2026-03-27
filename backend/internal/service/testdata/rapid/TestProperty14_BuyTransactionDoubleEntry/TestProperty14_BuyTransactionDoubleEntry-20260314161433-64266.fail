@@ -1,0 +1,44 @@
+# 2026/03/14 16:14:33.157701 [TestProperty14_BuyTransactionDoubleEntry] [rapid] draw userID: 2
+# 2026/03/14 16:14:33.157715 [TestProperty14_BuyTransactionDoubleEntry] [rapid] draw assetType: "vn_stock"
+# 2026/03/14 16:14:33.157746 [TestProperty14_BuyTransactionDoubleEntry] [rapid] draw symbol: "AAA"
+# 2026/03/14 16:14:33.157749 [TestProperty14_BuyTransactionDoubleEntry] [rapid] draw numBuys: 1
+# 2026/03/14 16:14:33.157751 [TestProperty14_BuyTransactionDoubleEntry] [rapid] draw qty: 1
+# 2026/03/14 16:14:33.157772 [TestProperty14_BuyTransactionDoubleEntry] [rapid] draw price: 1
+# 2026/03/14 16:14:33.157901 [TestProperty14_BuyTransactionDoubleEntry] ProcessBuy failed: failed to record buy transaction: failed to insert transaction: FOREIGN KEY constraint failed
+# 
+v0.4.8#402571799774222189
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
