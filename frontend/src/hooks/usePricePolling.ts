@@ -30,34 +30,24 @@ function wrapWithFreshness<T>(poll: UsePollingResult<T>): PricePollingResult<T> 
 }
 
 /**
- * High-level hook that polls all price data sources at the correct intervals:
+ * High-level hook that polls stock price data at the correct interval:
  *  - Portfolio summary: 15 s during VN trading hours (Mon–Fri 9:00–15:00 ICT), 300 s off-hours
- *  - Gold prices:       300 s always
- *  - Crypto prices:     60 s always
  *
- * Returns polling results with freshness status per data type.
+ * Returns polling result with freshness status.
  */
-export function usePricePolling<TSummary, TGold, TCrypto>(
+export function usePricePolling<TSummary>(
   fetchSummary: () => Promise<TSummary | null>,
-  fetchGold: () => Promise<TGold | null>,
-  fetchCrypto: () => Promise<TCrypto | null>,
 ): {
   summary: PricePollingResult<TSummary>;
-  gold: PricePollingResult<TGold>;
-  crypto: PricePollingResult<TCrypto>;
   isTradingHours: boolean;
 } {
   const tradingHours = isVNTradingHours();
   const summaryInterval = tradingHours ? 15_000 : 300_000;
 
   const summaryPoll = usePolling<TSummary>(fetchSummary, summaryInterval);
-  const goldPoll = usePolling<TGold>(fetchGold, 300_000);
-  const cryptoPoll = usePolling<TCrypto>(fetchCrypto, 60_000);
 
   return {
     summary: wrapWithFreshness(summaryPoll),
-    gold: wrapWithFreshness(goldPoll),
-    crypto: wrapWithFreshness(cryptoPoll),
     isTradingHours: tradingHours,
   };
 }

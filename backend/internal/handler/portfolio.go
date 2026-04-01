@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	"myfi-backend/internal/model"
@@ -24,59 +23,23 @@ func (h *Handlers) HandlePortfolioSummary(c *gin.Context) {
 
 // HandleAddAsset adds a new asset to the user's portfolio.
 // POST /api/portfolio/assets
+// TODO: Re-implement after AssetRegistry is replaced with stock-only portfolio logic.
 func (h *Handlers) HandleAddAsset(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
-	var asset model.Asset
-	if err := c.ShouldBindJSON(&asset); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	asset.UserID = userID
-	id, err := h.AssetRegistry.AddAsset(c.Request.Context(), asset)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusCreated, gin.H{"id": id})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "asset management is being migrated to stock-only portfolio"})
 }
 
 // HandleUpdateAsset updates an existing asset.
 // PUT /api/portfolio/assets/:id
+// TODO: Re-implement after AssetRegistry is replaced with stock-only portfolio logic.
 func (h *Handlers) HandleUpdateAsset(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
-	assetID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid asset id"})
-		return
-	}
-	var asset model.Asset
-	if err := c.ShouldBindJSON(&asset); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	asset.ID = assetID
-	asset.UserID = userID
-	if err := h.AssetRegistry.UpdateAsset(c.Request.Context(), asset); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "asset management is being migrated to stock-only portfolio"})
 }
 
 // HandleDeleteAsset removes an asset from the user's portfolio.
 // DELETE /api/portfolio/assets/:id
+// TODO: Re-implement after AssetRegistry is replaced with stock-only portfolio logic.
 func (h *Handlers) HandleDeleteAsset(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
-	assetID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid asset id"})
-		return
-	}
-	if err := h.AssetRegistry.DeleteAsset(c.Request.Context(), assetID, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "asset management is being migrated to stock-only portfolio"})
 }
 
 // HandleGetTransactions returns all transactions for the authenticated user.

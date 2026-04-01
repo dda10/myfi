@@ -14,37 +14,26 @@ import {
   TrendingUp,
   TrendingDown,
   CreditCard,
-  Landmark,
-  Coins,
   Plus,
   Filter as FilterIcon,
   Bell,
   ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useI18n } from "@/context/I18nContext";
-import { usePricePolling } from "@/hooks/usePricePolling";
+import { usePolling, isVNTradingHours } from "@/hooks/usePolling";
+import { getFreshnessStatus } from "@/hooks/usePricePolling";
 import { FreshnessIndicator } from "@/components/ui/FreshnessIndicator";
+import { apiFetch } from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-
-// Color palette for asset types
+// Color palette for stock portfolio
 const ASSET_COLORS: Record<string, string> = {
   vn_stock: "#6366f1",
-  gold: "#eab308",
-  crypto: "#ec4899",
-  savings: "#8b5cf6",
-  bond: "#14b8a6",
   cash: "#64748b",
 };
 
 const ASSET_LABELS: Record<string, string> = {
   vn_stock: "Stocks (VN)",
-  gold: "Gold",
-  crypto: "Crypto",
-  savings: "Savings",
-  bond: "Bonds",
   cash: "Cash",
 };
 
@@ -84,21 +73,6 @@ interface Transaction {
   transactionType: string;
 }
 
-interface GoldPrice {
-  type_name: string;
-  buy_price: number;
-  sell_price: number;
-}
-
-interface CryptoPrice {
-  symbol: string;
-  name: string;
-  price_vnd: number;
-  price_usd: number;
-  change_24h: number;
-  percent_change_24h: number;
-}
-
 interface Alert {
   id: number;
   symbol: string;
@@ -107,18 +81,6 @@ interface Alert {
   confidenceScore: number;
   createdAt: string;
   viewed: boolean;
-}
-
-// --- Fetch helpers ---
-
-async function apiFetch<T>(path: string): Promise<T | null> {
-  try {
-    const res = await fetch(`${API_URL}${path}`, { credentials: "include" });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
 }
 
 // --- Skeleton components ---
@@ -147,11 +109,12 @@ export function OverviewModule() {
   const { setActiveTab, setActiveSymbol } = useApp();
   const { formatCurrency, formatPercent, formatDate, t } = useI18n();
 
-  // Polled data sources with trading-hours-aware intervals
-  const { summary: summaryPoll, gold: goldPoll, crypto: cryptoPoll } = usePricePolling<PortfolioSummary, GoldPrice[], CryptoPrice[]>(
+  // Polled data source with trading-hours-aware interval
+  const tradingHours = isVNTradingHours();
+  const summaryInterval = tradingHours ? 15_000 : 300_000;
+  const summaryPoll = usePolling<PortfolioSummary>(
     () => apiFetch<PortfolioSummary>("/api/portfolio/summary"),
-    () => apiFetch<GoldPrice[]>("/api/prices/gold"),
-    () => apiFetch<CryptoPrice[]>("/api/prices/crypto"),
+    summaryInterval,
   );
 
   // Non-polled data (fetched once on mount)
@@ -174,10 +137,9 @@ export function OverviewModule() {
   }, [fetchOnce]);
 
   const summary = summaryPoll.data;
-  const goldPrices = goldPoll.data ?? [];
-  const cryptoPrices = cryptoPoll.data ?? [];
   const loading = initialLoading && summaryPoll.loading;
   const error = summaryPoll.error;
+  const freshness = getFreshnessStatus(summaryPoll.lastUpdated);
 
   const handleAlertClick = (alert: Alert) => {
     setActiveSymbol(alert.symbol);
@@ -193,10 +155,6 @@ export function OverviewModule() {
             <SkeletonBlock className="h-80" />
           </div>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <SkeletonBlock className="h-28" />
-              <SkeletonBlock className="h-28" />
-            </div>
             <SkeletonBlock className="h-52" />
           </div>
         </div>
@@ -241,16 +199,6 @@ export function OverviewModule() {
     )
     .slice(0, 5);
 
-  // Gold: find SJC entry or first entry
-  const sjcGold =
-    goldPrices.find((g) => g.type_name?.toLowerCase().includes("sjc")) ??
-    goldPrices[0];
-
-  // Crypto: find BTC
-  const btc = cryptoPrices.find(
-    (c) => c.symbol?.toLowerCase() === "btc" || c.name?.toLowerCase() === "bitcoin",
-  );
-
   return (
     <div className="flex flex-col gap-8 w-full">
       {/* Master NAV Header */}
@@ -288,7 +236,7 @@ export function OverviewModule() {
           </div>
           <div className="flex gap-3">
             <button className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition shadow-lg shadow-indigo-600/20">
-              <Plus size={18} /> {t("nav.addAsset") || "Add Asset"}
+              <Plus size={18} /> {t("nav.addAsset") || "Add Stock"}
             </button>
             <button
               onClick={() => setActiveTab("Filter")}
@@ -301,7 +249,7 @@ export function OverviewModule() {
       </div>
 
       {/* Stale data warning */}
-      {summaryPoll.freshness === "expired" && (
+      {freshness === "expired" && (
         <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
           <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
           {t("nav.staleWarning") || "Price data may be outdated. Displaying last known values."}
@@ -313,7 +261,7 @@ export function OverviewModule() {
         <div className="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg">
           <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
             <PieChartIcon size={20} className="text-indigo-400" />
-            {t("nav.assetAllocation") || "Asset Allocation"}
+            {t("nav.assetAllocation") || "Portfolio Allocation"}
           </h2>
           {allocationData.length > 0 ? (
             <div className="flex flex-col md:flex-row items-center justify-between">
@@ -349,7 +297,7 @@ export function OverviewModule() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-20px]">
                   <span className="text-zinc-500 text-xs font-medium">
-                    TOTAL ASSETS
+                    HOLDINGS
                   </span>
                   <span className="text-white font-bold text-lg">
                     {allocationData.length}
@@ -388,42 +336,13 @@ export function OverviewModule() {
             </div>
           ) : (
             <div className="flex items-center justify-center h-48 text-zinc-500">
-              No assets in portfolio yet
+              No stocks in portfolio yet
             </div>
           )}
         </div>
 
-        {/* Right column: Quick metrics + Recent Activity + Alerts */}
+        {/* Right column: Recent Activity + Alerts */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Quick Metric Cards */}
-          <div className="grid grid-cols-2 gap-4">
-            <MetricCard
-              icon={<Landmark className="text-yellow-500" />}
-              title={t("nav.goldRate") || "Gold Rate"}
-              val={
-                sjcGold
-                  ? formatCurrency(sjcGold.buy_price)
-                  : "—"
-              }
-              subVal={sjcGold ? `/ ${t("nav.tael") || "tael"}` : ""}
-              change={null}
-            />
-            <MetricCard
-              icon={<Coins className="text-pink-500" />}
-              title="Bitcoin"
-              val={btc ? `$${btc.price_usd.toLocaleString()}` : "—"}
-              subVal=""
-              change={
-                btc
-                  ? {
-                      value: btc.percent_change_24h,
-                      isPositive: btc.percent_change_24h >= 0,
-                    }
-                  : null
-              }
-            />
-          </div>
-
           {/* Recent Transactions */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg">
             <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
@@ -435,8 +354,6 @@ export function OverviewModule() {
                 {recentTx.map((tx) => {
                   const isBuyOrDeposit =
                     tx.transactionType === "buy" ||
-                    tx.transactionType === "deposit" ||
-                    tx.transactionType === "interest" ||
                     tx.transactionType === "dividend";
                   return (
                     <div
@@ -518,56 +435,6 @@ export function OverviewModule() {
 }
 
 // --- Sub-components ---
-
-function MetricCard({
-  icon,
-  title,
-  val,
-  subVal,
-  change,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  val: string;
-  subVal: string;
-  change: { value: number; isPositive: boolean } | null;
-}) {
-  return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
-      <div className="flex justify-between items-start mb-2">
-        <div className="p-2 bg-zinc-800/50 rounded-lg">{icon}</div>
-        {change !== null && (
-          <span
-            className={`text-xs font-bold px-2 py-1 rounded-md flex items-center gap-0.5 ${
-              change.isPositive
-                ? "bg-green-500/10 text-green-500"
-                : "bg-red-500/10 text-red-500"
-            }`}
-          >
-            {change.isPositive ? (
-              <ArrowUpRight size={10} />
-            ) : (
-              <ArrowDownRight size={10} />
-            )}
-            {change.isPositive ? "+" : ""}
-            {change.value.toFixed(1)}%
-          </span>
-        )}
-      </div>
-      <div>
-        <p className="text-xs font-medium text-zinc-500 mb-0.5">{title}</p>
-        <p className="text-lg font-bold text-white">
-          {val}
-          {subVal && (
-            <span className="text-xs text-zinc-500 font-normal ml-1">
-              {subVal}
-            </span>
-          )}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 function PieChartIcon(props: React.SVGProps<SVGSVGElement> & { size?: number }) {
   const { size = 24, ...rest } = props;

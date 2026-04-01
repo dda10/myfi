@@ -33,7 +33,6 @@ func main() {
 		slog.Error("data source router initialization failed", "err", err)
 		os.Exit(1)
 	}
-	cb := infra.NewCircuitBreaker(3, 60*time.Second)
 
 	// Initialize vnstock client for direct API calls (used by agent handler)
 	vnstockClient, err := vnstock.New(vnstock.Config{
@@ -46,42 +45,23 @@ func main() {
 	}
 
 	// Initialize services
-	fxSvc := service.NewFXService(cache, router.RateLimiter(), cb)
-	goldSvc, err := service.NewGoldService(cache, router.RateLimiter())
-	if err != nil {
-		slog.Error("gold service initialization failed", "err", err)
-		os.Exit(1)
-	}
-	cryptoSvc := service.NewCryptoService(cache, router.RateLimiter(), infra.NewCircuitBreaker(3, 60*time.Second))
-	priceSvc := service.NewPriceService(router, cache, goldSvc)
+	priceSvc := service.NewPriceService(router, cache, nil)
 	sectorSvc := service.NewSectorService(router, cache)
 	marketDataSvc := service.NewMarketDataService(router, priceSvc, sectorSvc, cache)
-	fundSvc := service.NewFundService(cache)
-	commoditySvc := service.NewCommodityService(goldSvc, cache)
 	macroSvc := service.NewMacroService(cache)
 
 	// Initialize DB-backed services
 	authSvc := service.NewAuthService(db, model.DefaultAuthConfig())
 	watchlistSvc := service.NewWatchlistService(db)
 	screenerSvc := service.NewScreenerService(router, sectorSvc, cache, db)
-	savingsTracker := service.NewSavingsTracker(db)
 	ledger := service.NewTransactionLedger(db)
-	registry := service.NewAssetRegistry(db, priceSvc)
-	portfolioEngine := service.NewPortfolioEngine(registry, ledger, priceSvc)
+	portfolioEngine := service.NewPortfolioEngine(nil, ledger, priceSvc)
 	performanceEngine := service.NewPerformanceEngine(db, router)
-	comparisonEngine := service.NewComparisonEngine(router, sectorSvc, cache)
 
 	// Initialize new services
 	riskSvc := service.NewRiskService(db, performanceEngine, router)
-	goalPlanner := service.NewGoalPlanner(db)
 	backtestEngine := service.NewBacktestEngine()
-	fxRateData, _ := fxSvc.GetUSDVNDRate()
-	fxRate := 25400.0
-	if fxRateData != nil && fxRateData.Rate > 0 {
-		fxRate = fxRateData.Rate
-	}
-	exportSvc := service.NewExportService(fxRate)
-	alertSvc := service.NewAlertService(db)
+	exportSvc := service.NewExportService(25400.0) // default USD/VND rate
 	knowledgeBase := service.NewKnowledgeBase(db, router)
 
 	// Initialize liquidity filter (dynamic whitelist)
@@ -94,50 +74,31 @@ func main() {
 	// Initialize recommendation tracker for AI signal accuracy
 	recTracker := service.NewRecommendationTracker(priceSvc)
 
-	// Initialize signal engine for systematic recommendations
-	signalEngine := service.NewSignalEngine(router, liquidityFilter, sectorSvc, screenerSvc)
-	signalEngine.SetRecommendationTracker(recTracker)
-
-	// Initialize signal backtester for historical simulation
-	signalBacktester := service.NewSignalBacktester(router, liquidityFilter, sectorSvc, screenerSvc)
-
 	// Construct handlers with all dependencies
 	h := &handler.Handlers{
 		VnstockClient:     vnstockClient,
 		DataSourceRouter:  router,
-		FXService:         fxSvc,
 		SharedCache:       cache,
-		GoldService:       goldSvc,
 		PriceService:      priceSvc,
 		SectorService:     sectorSvc,
 		MarketDataService: marketDataSvc,
-		FundService:       fundSvc,
-		CommodityService:  commoditySvc,
 		MacroService:      macroSvc,
-		CryptoService:     cryptoSvc,
 		DB:                db,
 		AuthService:       authSvc,
 		WatchlistService:  watchlistSvc,
 		ScreenerService:   screenerSvc,
 		PortfolioEngine:   portfolioEngine,
 		PerformanceEngine: performanceEngine,
-		ComparisonEngine:  comparisonEngine,
 		TransactionLedger: ledger,
-		AssetRegistry:     registry,
-		SavingsTracker:    savingsTracker,
 		LiquidityFilter:   liquidityFilter,
 
 		// AI recommendation tracking
 		RecommendationTracker: recTracker,
-		SignalEngine:          signalEngine,
-		SignalBacktester:      signalBacktester,
 
-		// New services
+		// Services
 		RiskService:    riskSvc,
-		GoalPlanner:    goalPlanner,
 		BacktestEngine: backtestEngine,
 		ExportService:  exportSvc,
-		AlertService:   alertSvc,
 		KnowledgeBase:  knowledgeBase,
 	}
 

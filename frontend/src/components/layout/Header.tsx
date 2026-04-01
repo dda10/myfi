@@ -24,7 +24,11 @@ export function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/market/listing")
+    fetch("http://localhost:8080/api/market/listing", {
+      headers: typeof window !== "undefined" && localStorage.getItem("myfi-token")
+        ? { Authorization: `Bearer ${localStorage.getItem("myfi-token")}` }
+        : {},
+    })
       .then(res => res.json())
       .then(json => {
         if (json.data) setTickers(json.data);

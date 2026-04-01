@@ -232,22 +232,6 @@ func (h *Handlers) HandleRateLimitMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"metrics": metrics})
 }
 
-// HandleFXRate serves GET /api/prices/fx
-func (h *Handlers) HandleFXRate(c *gin.Context) {
-	if h.FXService == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "FX service not initialized"})
-		return
-	}
-
-	rate, err := h.FXService.GetUSDVNDRate()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": rate})
-}
-
 // HandleUnifiedListing serves GET /api/market/listing with full listing data
 // from MarketDataService (symbols, indices, bonds, exchanges).
 func (h *Handlers) HandleUnifiedListing(c *gin.Context) {
@@ -334,26 +318,6 @@ func (h *Handlers) HandleMarketStatistics(c *gin.Context) {
 func (h *Handlers) HandleValuationMetrics(c *gin.Context) {
 	symbol := c.Query("symbol")
 	data, err := h.MarketDataService.GetValuationMetrics(c.Request.Context(), symbol)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"data": data})
-}
-
-// HandleFunds serves GET /api/market/funds
-func (h *Handlers) HandleFunds(c *gin.Context) {
-	funds, err := h.FundService.GetFundList(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"data": funds})
-}
-
-// HandleCommodities serves GET /api/market/commodities
-func (h *Handlers) HandleCommodities(c *gin.Context) {
-	data, err := h.CommodityService.GetAllCommodities(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

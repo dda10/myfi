@@ -174,7 +174,7 @@ func (s *ScreenerService) fetchAndFilter(
 	}
 
 	resultsCh := make(chan indexedResult, len(candidates))
-	sem := make(chan struct{}, 20)
+	sem := make(chan struct{}, 2) // limit concurrency to avoid VCI 429 rate limits
 	var wg sync.WaitGroup
 
 	for i, rec := range candidates {
@@ -183,6 +183,11 @@ func (s *ScreenerService) fetchAndFilter(
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
+
+			// Stagger to avoid VCI WAF rate limiting
+			if idx > 0 {
+				time.Sleep(300 * time.Millisecond)
+			}
 
 			result := s.buildScreenerResult(ctx, record, sectorTrendMap)
 			if result == nil {

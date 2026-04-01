@@ -4,11 +4,10 @@ import "time"
 
 // --- Transaction (from transaction_ledger.go) ---
 
-// Transaction represents a single financial transaction in the ledger.
+// Transaction represents a single stock transaction in the ledger.
 type Transaction struct {
 	ID              int64           `json:"id"`
 	UserID          int64           `json:"userId"`
-	AssetType       AssetType       `json:"assetType"`
 	Symbol          string          `json:"symbol"`
 	Quantity        float64         `json:"quantity"`
 	UnitPrice       float64         `json:"unitPrice"`
@@ -21,11 +20,10 @@ type Transaction struct {
 
 // --- Asset (from asset_registry.go) ---
 
-// Asset represents a user's asset holding in the registry
-type Asset struct {
+// Holding represents a user's stock holding.
+type Holding struct {
 	ID              int64     `json:"id"`
 	UserID          int64     `json:"userId"`
-	AssetType       AssetType `json:"assetType"`
 	Symbol          string    `json:"symbol"`
 	Quantity        float64   `json:"quantity"`
 	AverageCost     float64   `json:"averageCost"`
@@ -39,17 +37,15 @@ type Asset struct {
 
 // PortfolioSummary contains the full portfolio overview for a user.
 type PortfolioSummary struct {
-	NAV               float64               `json:"nav"`
-	NAVChange24h      float64               `json:"navChange24h"`
-	NAVChangePercent  float64               `json:"navChangePercent"`
-	AllocationByType  map[AssetType]float64 `json:"allocationByType"`
-	AllocationPercent map[AssetType]float64 `json:"allocationPercent"`
-	Holdings          []HoldingDetail       `json:"holdings"`
+	NAV              float64         `json:"nav"`
+	NAVChange24h     float64         `json:"navChange24h"`
+	NAVChangePercent float64         `json:"navChangePercent"`
+	Holdings         []HoldingDetail `json:"holdings"`
 }
 
 // HoldingDetail contains per-holding valuation and P&L data.
 type HoldingDetail struct {
-	Asset           Asset   `json:"asset"`
+	Holding         Holding `json:"holding"`
 	CurrentPrice    float64 `json:"currentPrice"`
 	MarketValue     float64 `json:"marketValue"`
 	UnrealizedPL    float64 `json:"unrealizedPL"`
@@ -131,33 +127,6 @@ type FilterPreset struct {
 	CreatedAt time.Time       `json:"createdAt"`
 }
 
-// --- Commodity (from commodity_service.go) ---
-
-// CommodityPrice represents a commodity price entry.
-type CommodityPrice struct {
-	Name      string    `json:"name"`
-	Symbol    string    `json:"symbol"`
-	Category  string    `json:"category"`
-	Price     float64   `json:"price"`
-	Currency  string    `json:"currency"`
-	Unit      string    `json:"unit"`
-	Change    float64   `json:"change"`
-	ChangePct float64   `json:"changePct"`
-	Timestamp time.Time `json:"timestamp"`
-	Source    string    `json:"source"`
-}
-
-// CommodityData contains all commodity market data.
-type CommodityData struct {
-	GoldVN       []GoldPriceResponse `json:"goldVn"`
-	GoldGlobal   []OHLCVBar          `json:"goldGlobal"`
-	Energy       []CommodityPrice    `json:"energy"`
-	Metals       []CommodityPrice    `json:"metals"`
-	Agricultural []CommodityPrice    `json:"agricultural"`
-	VNPork       []CommodityPrice    `json:"vnPork"`
-	IsStale      bool                `json:"isStale"`
-}
-
 // --- Macro (from macro_service.go) ---
 
 // MacroIndicator represents a single macroeconomic indicator.
@@ -176,38 +145,6 @@ type MacroIndicator struct {
 type MacroData struct {
 	Indicators []MacroIndicator `json:"indicators"`
 	IsStale    bool             `json:"isStale"`
-}
-
-// --- Fund (from fund_service.go) ---
-
-// FundInfo represents an open fund.
-type FundInfo struct {
-	Code         string  `json:"code"`
-	Name         string  `json:"name"`
-	FundType     string  `json:"fundType"`
-	ManagementCo string  `json:"managementCo"`
-	NAV          float64 `json:"nav"`
-	NAVDate      string  `json:"navDate"`
-}
-
-// FundNAV represents a fund's net asset value at a point in time.
-type FundNAV struct {
-	Code   string    `json:"code"`
-	NAV    float64   `json:"nav"`
-	Date   time.Time `json:"date"`
-	Change float64   `json:"change"`
-}
-
-// FundPerformance represents fund performance metrics.
-type FundPerformance struct {
-	Code         string  `json:"code"`
-	Name         string  `json:"name"`
-	ReturnYTD    float64 `json:"returnYtd"`
-	Return1M     float64 `json:"return1m"`
-	Return3M     float64 `json:"return3m"`
-	Return6M     float64 `json:"return6m"`
-	Return1Y     float64 `json:"return1y"`
-	ExpenseRatio float64 `json:"expenseRatio"`
 }
 
 // --- Watchlist (from watchlist_service.go) ---
@@ -236,11 +173,10 @@ type WatchlistSymbol struct {
 
 // PerformanceMetrics contains all portfolio performance analytics.
 type PerformanceMetrics struct {
-	TWR                 float64               `json:"twr"`
-	MWRR                float64               `json:"mwrr"`
-	EquityCurve         []NAVSnapshot         `json:"equityCurve"`
-	BenchmarkComparison BenchmarkData         `json:"benchmarkComparison"`
-	PerformanceByType   map[AssetType]float64 `json:"performanceByType"`
+	TWR                 float64       `json:"twr"`
+	MWRR                float64       `json:"mwrr"`
+	EquityCurve         []NAVSnapshot `json:"equityCurve"`
+	BenchmarkComparison BenchmarkData `json:"benchmarkComparison"`
 }
 
 // NAVSnapshot represents a daily NAV data point for the equity curve.

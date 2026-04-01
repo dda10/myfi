@@ -57,12 +57,7 @@ func (h *Handlers) HandleSectorAverages(c *gin.Context) {
 
 // HandleSectorStocks returns all stocks in a given sector.
 // GET /api/sectors/:sector/stocks
+// TODO: Re-implement after ComparisonEngine is replaced with SectorService logic.
 func (h *Handlers) HandleSectorStocks(c *gin.Context) {
-	sector := model.ICBSector(c.Param("sector"))
-	result, err := h.ComparisonEngine.GetSectorStocks(c.Request.Context(), sector)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "sector stocks endpoint is being migrated"})
 }

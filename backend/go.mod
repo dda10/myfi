@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.4
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.57
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.24.3
-	github.com/dda10/vnstock-go v0.1.1
+	github.com/dda10/vnstock-go v0.1.2-0.20260331062652-9496a3306331
 	github.com/gin-gonic/gin v1.12.0
 	github.com/tmc/langchaingo v0.1.14
 )

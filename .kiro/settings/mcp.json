@@ -5,7 +5,7 @@
       "args": [
         "@gongrzhe/server-gmail-autoauth-mcp"
       ],
-      "disabled": false,
+      "disabled": true,
       "autoApprove": []
     }
   }

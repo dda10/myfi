@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { installFetchInterceptor } from "@/lib/fetch-interceptor";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -25,6 +26,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Install global fetch interceptor to auto-inject JWT token
+  useEffect(() => {
+    installFetchInterceptor();
+  }, []);
 
   const checkAuth = useCallback(async () => {
     try {
