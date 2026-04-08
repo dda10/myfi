@@ -28,7 +28,7 @@ type CorporateAction struct {
 // DividendRecord tracks a dividend payment for a specific user holding.
 type DividendRecord struct {
 	ID               int64     `json:"id"`
-	UserID           int64     `json:"userId"`
+	UserID           string    `json:"userId"`
 	Symbol           string    `json:"symbol"`
 	ExDate           time.Time `json:"exDate"`
 	PaymentDate      time.Time `json:"paymentDate"`

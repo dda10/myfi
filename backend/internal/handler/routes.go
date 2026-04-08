@@ -80,12 +80,7 @@ func SetupRouter(h *Handlers) *gin.Engine {
 		protected.POST("/chat", h.HandleChat)
 		protected.POST("/models", h.HandleModels)
 
-		// AI recommendation tracking endpoints
-		protected.GET("/recommendations/summary", h.HandleRecommendationSummary)
-		protected.GET("/recommendations/accuracy", h.HandleRecommendationAccuracy)
-		protected.GET("/recommendations", h.HandleRecommendationList)
-		protected.GET("/recommendations/:id", h.HandleRecommendationByID)
-		protected.POST("/recommendations/update-outcomes", h.HandleUpdateOutcomes)
+		// AI recommendation tracking endpoints — TODO: replaced by ranking handler in Task 12
 
 		// Portfolio endpoints
 		protected.GET("/portfolio/summary", h.HandlePortfolioSummary)
@@ -129,6 +124,21 @@ func SetupRouter(h *Handlers) *gin.Engine {
 		protected.GET("/export/snapshot", h.HandleExportSnapshot)
 		protected.GET("/export/report", h.HandleExportReport)
 		protected.GET("/export/tax", h.HandleExportTax)
+
+		// Sentiment analysis endpoints (LLM-powered Vietnamese news sentiment)
+		if h.SentimentHandlers != nil {
+			protected.POST("/sentiment/analyze", h.SentimentHandlers.HandleAnalyze)
+			protected.GET("/sentiment/trend", h.SentimentHandlers.HandleGetTrend)
+			protected.GET("/sentiment/timeseries", h.SentimentHandlers.HandleGetTimeSeries)
+			protected.GET("/sentiment/articles", h.SentimentHandlers.HandleGetArticles)
+		}
+
+		// Market consensus endpoints (multi-source sentiment aggregation)
+		if h.ConsensusHandlers != nil {
+			protected.GET("/consensus/score", h.ConsensusHandlers.HandleGetConsensus)
+			protected.GET("/consensus/divergences", h.ConsensusHandlers.HandleGetDivergences)
+			protected.GET("/consensus/mood", h.ConsensusHandlers.HandleGetMarketMood)
+		}
 	}
 
 	return r

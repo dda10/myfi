@@ -5,9 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"myfi-backend/internal/model"
-
-	"github.com/dda10/vnstock-go"
+	vnstock "github.com/dda10/vnstock-go"
 )
 
 func TestDataSourceRouter_Creation(t *testing.T) {
@@ -20,12 +18,13 @@ func TestDataSourceRouter_Creation(t *testing.T) {
 		t.Fatal("Router should not be nil")
 	}
 
-	if router.vciClient == nil {
+	if router.VCIClient() == nil {
 		t.Error("VCI client should not be nil")
 	}
 
-	if router.kbsClient == nil {
-		t.Error("KBS client should not be nil")
+	// KBS is best-effort; just log if nil.
+	if router.KBSClient() == nil {
+		t.Log("KBS client is nil (non-fatal, best-effort connector)")
 	}
 }
 
@@ -37,43 +36,35 @@ func TestDataSourceRouter_SourcePreferences(t *testing.T) {
 
 	prefs := router.GetSourcePreferences()
 
-	// Verify all 12 data categories have preferences
-	expectedCategories := []model.DataCategory{
-		model.PriceQuotes,
-		model.OHLCVHistory,
-		model.IntradayData,
-		model.OrderBook,
-		model.CompanyOverview,
-		model.Shareholders,
-		model.Officers,
-		model.News,
-		model.IncomeStatement,
-		model.BalanceSheet,
-		model.CashFlow,
-		model.FinancialRatios,
+	// Verify core data categories have preferences (more categories now with v2).
+	coreCategories := []DataCategory{
+		PriceQuotes,
+		OHLCVHistory,
+		IntradayData,
+		OrderBook,
+		CompanyOverview,
+		Shareholders,
+		Officers,
+		News,
+		IncomeStatement,
+		BalanceSheet,
+		CashFlow,
+		FinancialRatios,
 	}
 
-	if len(prefs) != len(expectedCategories) {
-		t.Errorf("Expected %d preferences, got %d", len(expectedCategories), len(prefs))
-	}
-
-	for _, cat := range expectedCategories {
+	for _, cat := range coreCategories {
 		pref, exists := prefs[cat]
 		if !exists {
 			t.Errorf("Missing preference for category: %s", cat)
 			continue
 		}
 
-		if pref.Primary != "VCI" && pref.Primary != "KBS" {
-			t.Errorf("Invalid primary source for %s: %s", cat, pref.Primary)
+		if pref.Primary == "" {
+			t.Errorf("Empty primary source for %s", cat)
 		}
 
-		if pref.Fallback != "VCI" && pref.Fallback != "KBS" {
-			t.Errorf("Invalid fallback source for %s: %s", cat, pref.Fallback)
-		}
-
-		if pref.Primary == pref.Fallback {
-			t.Errorf("Primary and fallback should be different for %s", cat)
+		if len(pref.Fallbacks) == 0 {
+			t.Errorf("No fallbacks configured for %s", cat)
 		}
 	}
 }
@@ -85,7 +76,7 @@ func TestDataSourceRouter_SelectSource(t *testing.T) {
 	}
 
 	// Test selecting primary source for PriceQuotes
-	client, source := router.selectSource(model.PriceQuotes)
+	client, source := router.selectSource(PriceQuotes)
 	if client == nil {
 		t.Error("Selected client should not be nil")
 	}
@@ -93,13 +84,12 @@ func TestDataSourceRouter_SelectSource(t *testing.T) {
 		t.Errorf("Expected VCI as primary source for PriceQuotes, got %s", source)
 	}
 
-	// Test fallback source
-	fallbackClient, fallbackSource := router.getFallbackSource(model.PriceQuotes)
-	if fallbackClient == nil {
-		t.Error("Fallback client should not be nil")
-	}
-	if fallbackSource != "KBS" {
-		t.Errorf("Expected KBS as fallback source for PriceQuotes, got %s", fallbackSource)
+	// Test fallback sources
+	fallbacks := router.getFallbackSources(PriceQuotes)
+	if len(fallbacks) == 0 {
+		t.Error("Expected at least one fallback source for PriceQuotes")
+	} else {
+		t.Logf("Fallback sources for PriceQuotes: %d available", len(fallbacks))
 	}
 }
 

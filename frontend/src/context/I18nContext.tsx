@@ -21,7 +21,7 @@ interface I18nContextType {
 
 // --- Constants ---
 
-const STORAGE_KEY = "myfi-locale";
+const STORAGE_KEY = "ezistock-locale";
 const DEFAULT_LOCALE: Locale = "vi-VN";
 
 const translations: Record<Locale, Record<string, string>> = {

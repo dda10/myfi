@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Code Quality Review",
+  "description": "Analyzes modified source code files for potential improvements including code smells, design patterns, and best practices. Generates suggestions for readability, maintainability, and performance while preserving existing functionality.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.go",
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.py"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review the recently modified file for code quality improvements. Analyze for:\n\n1. Code smells (long methods, deep nesting, duplicated logic, magic numbers, god objects)\n2. Design pattern opportunities (missing abstractions, better encapsulation, strategy/factory patterns where applicable)\n3. Best practices for the specific language (Go: error handling, interface usage, goroutine safety; TypeScript/React: hook rules, memoization, prop drilling; Python: type hints, context managers, generator usage)\n4. Readability (naming clarity, function length, comment quality, consistent formatting)\n5. Maintainability (coupling, cohesion, single responsibility, testability)\n6. Performance (unnecessary allocations, N+1 patterns, missing caching opportunities, redundant computations)\n\nKeep suggestions concise and actionable. Only flag meaningful improvements — skip trivial nitpicks. Preserve existing functionality in all suggestions."
+  }
+}

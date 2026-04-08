@@ -15,7 +15,7 @@ export function installFetchInterceptor() {
     // Only inject token for requests to our backend API
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
     if (url.startsWith(apiUrl) || url.startsWith("http://localhost:8080")) {
-      const token = localStorage.getItem("myfi-token");
+      const token = localStorage.getItem("ezistock-token");
       if (token) {
         const headers = new Headers(init?.headers);
         if (!headers.has("Authorization")) {

@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package ezistock;
+
+option go_package = "myfi-backend/internal/generated/proto/ezistockpb";
+
+// AlphaMiningService provides AI-powered stock ranking, backtesting,
+// and market regime detection via the Alpha Mining Engine.
+// Requirements: 1.2, 43.4, 43.5
+service AlphaMiningService {
+  // GetRanking returns consensus-based stock rankings from the strategy ensemble.
+  rpc GetRanking(RankingRequest) returns (RankingResponse);
+
+  // RunBacktest executes walk-forward backtests with regime-aware validation.
+  rpc RunBacktest(BacktestRequest) returns (BacktestResponse);
+
+  // GetRegime returns the current market regime classification.
+  rpc GetRegime(RegimeRequest) returns (RegimeResponse);
+}
+
+// ---------------------------------------------------------------------------
+// GetRanking
+// ---------------------------------------------------------------------------
+
+message FactorWeight {
+  string factor = 1;
+  double weight = 2;
+}
+
+message RankingRequest {
+  repeated string universe = 1; // e.g. ["VN30", "HOSE"]
+  repeated string factor_groups = 2; // e.g. ["quality", "value", "momentum"]
+  repeated FactorWeight custom_weights = 3;
+  int32 top_n = 4;
+  string rebalance_frequency = 5; // "daily", "weekly", "monthly"
+}
+
+message RankedStock {
+  string symbol = 1;
+  double composite_score = 2;
+  int32 rank = 3;
+  map<string, double> factor_scores = 4;
+  int32 strategy_agreement = 5; // number of strategies that agree
+  string liquidity_tier = 6; // "tier1", "tier2", "tier3"
+}
+
+message RankingResponse {
+  repeated RankedStock rankings = 1;
+  string regime = 2;
+  string generated_at = 3;
+  int32 total_universe_size = 4;
+}
+
+// ---------------------------------------------------------------------------
+// RunBacktest
+// ---------------------------------------------------------------------------
+
+message BacktestRequest {
+  repeated string universe = 1;
+  repeated string factor_groups = 2;
+  repeated FactorWeight custom_weights = 3;
+  string start_date = 4;
+  string end_date = 5;
+  int32 top_n = 6;
+  string rebalance_frequency = 7;
+  double commission_rate = 8; // e.g. 0.0015 for 0.15%
+}
+
+message MonthlyReturn {
+  string month = 1; // "2024-01"
+  double return_pct = 2;
+}
+
+message DrawdownPeriod {
+  string start_date = 1;
+  string end_date = 2;
+  double max_drawdown = 3;
+}
+
+message BacktestMetrics {
+  double cumulative_return = 1;
+  double annualized_return = 2;
+  double sharpe_ratio = 3;
+  double max_drawdown = 4;
+  double win_rate = 5;
+  double profit_factor = 6;
+  double information_ratio = 7;
+  int32 total_trades = 8;
+}
+
+message BacktestResponse {
+  BacktestMetrics metrics = 1;
+  BacktestMetrics benchmark_metrics = 2; // VN-Index benchmark
+  repeated MonthlyReturn monthly_returns = 3;
+  repeated DrawdownPeriod drawdowns = 4;
+  repeated string alpha_decay_warnings = 5;
+  string regime_during_test = 6;
+}
+
+// ---------------------------------------------------------------------------
+// GetRegime
+// ---------------------------------------------------------------------------
+
+message RegimeRequest {
+  // Empty — returns current regime for the VN market.
+}
+
+message RegimeIndicator {
+  string name = 1;
+  double value = 2;
+  string signal = 3; // "bullish", "bearish", "neutral"
+}
+
+message RegimeResponse {
+  string regime = 1; // "bull", "bear", "sideways", "risk_on", "risk_off"
+  double confidence = 2;
+  repeated RegimeIndicator indicators = 3;
+  string detected_at = 4;
+}

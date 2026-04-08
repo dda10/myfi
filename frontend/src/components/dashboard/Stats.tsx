@@ -2,23 +2,15 @@
 
 import { TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react";
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 
 export function Stats() {
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("http://localhost:8080/api/market/quote?symbols=VNINDEX");
-        const json = await res.json();
-        if (json.data && json.data.length > 0) {
-          setData(json.data[0]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch VNINDEX stats", err);
-      }
-    };
-    fetchData();
+    apiFetch<{ data: any[] }>("/api/market/quote?symbols=VNINDEX").then((json) => {
+      if (json?.data?.[0]) setData(json.data[0]);
+    });
   }, []);
 
   const vniValue = data ? data.close.toFixed(2) : "Loading...";

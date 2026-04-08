@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Update Docs After Task",
+  "description": "After completing a spec task, automatically updates the steering docs (.kiro/steering/) to reflect the current feature, architecture, and code changes. Also syncs the updates to the Obsidian vault using the obsidian skill.",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A spec task was just completed. Do the following:\n\n1. Review what was just implemented in the completed task.\n2. Update the relevant steering docs in .kiro/steering/ (product.md, structure.md, tech.md) to accurately reflect any new or changed features, architecture, API endpoints, file structure, or technology additions. Only update what actually changed — don't rewrite everything.\n3. Use the obsidian skill to sync the updated steering docs to the vault, keeping the knowledge base in sync with the codebase."
+  }
+}

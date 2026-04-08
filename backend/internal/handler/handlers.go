@@ -3,6 +3,9 @@ package handler
 import (
 	"database/sql"
 
+	"myfi-backend/internal/domain/consensus"
+	"myfi-backend/internal/domain/market"
+	"myfi-backend/internal/domain/sentiment"
 	"myfi-backend/internal/infra"
 	"myfi-backend/internal/service"
 
@@ -12,14 +15,13 @@ import (
 // Handlers holds all service dependencies for HTTP handler methods.
 // Constructed in cmd/server/main.go and passed to route registration.
 type Handlers struct {
-	VnstockClient     *vnstock.Client
-	DataSourceRouter  *infra.DataSourceRouter
-	SharedCache       *infra.Cache
-	PriceService      *service.PriceService
-	SectorService     *service.SectorService
-	MarketDataService *service.MarketDataService
-	MacroService      *service.MacroService
-	DB                *sql.DB
+	// Market domain handlers (embedded for method promotion)
+	*market.Handlers
+
+	VnstockClient    *vnstock.Client
+	DataSourceRouter *infra.DataSourceRouter
+	SharedCache      *infra.Cache
+	DB               *sql.DB
 
 	// Portfolio and tracking services
 	WatchlistService  *service.WatchlistService
@@ -42,4 +44,8 @@ type Handlers struct {
 	BacktestEngine *service.BacktestEngine
 	ExportService  *service.ExportService
 	KnowledgeBase  *service.KnowledgeBase
+
+	// Sentiment & consensus (LLM-powered qualitative analysis)
+	SentimentHandlers *sentiment.Handlers
+	ConsensusHandlers *consensus.Handlers
 }

@@ -45,7 +45,7 @@ func (h *Handlers) HandleScreener(c *gin.Context) {
 // HandleGetPresets returns saved screener presets for the authenticated user.
 // GET /api/screener/presets
 func (h *Handlers) HandleGetPresets(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	presets, err := h.ScreenerService.GetPresets(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -57,7 +57,7 @@ func (h *Handlers) HandleGetPresets(c *gin.Context) {
 // HandleSavePreset saves a new screener preset for the authenticated user.
 // POST /api/screener/presets
 func (h *Handlers) HandleSavePreset(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	var preset model.FilterPreset
 	if err := c.ShouldBindJSON(&preset); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -75,7 +75,7 @@ func (h *Handlers) HandleSavePreset(c *gin.Context) {
 // HandleDeletePreset deletes a screener preset owned by the authenticated user.
 // DELETE /api/screener/presets/:id
 func (h *Handlers) HandleDeletePreset(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	presetID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid preset id"})

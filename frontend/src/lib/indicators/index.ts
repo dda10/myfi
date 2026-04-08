@@ -39,4 +39,4 @@ export {
 
 export type { BollingerBandsResult, KeltnerChannelResult } from "./volatility";
 
-export { computeOBV, computeLinearRegression } from "./volume";
+export { computeOBV, computeMFI, computeLinearRegression } from "./volume";

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Auto-translate locale files",
+  "description": "When the primary Vietnamese locale file (vi-VN.ts) is edited, identifies new or modified translation keys and generates corresponding English translations in en-US.ts, preserving context, meaning, and locale-specific conventions.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "frontend/src/i18n/locales/vi-VN.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The primary Vietnamese locale file (frontend/src/i18n/locales/vi-VN.ts) was just edited. Please:\n\n1. Read both frontend/src/i18n/locales/vi-VN.ts and frontend/src/i18n/locales/en-US.ts\n2. Compare the keys — find any keys present in vi-VN.ts that are missing from en-US.ts, and any keys whose Vietnamese values were modified (suggesting the English translation may need updating)\n3. For each new or modified key, generate a natural, contextually accurate English translation that:\n   - Maintains the same meaning and tone as the Vietnamese source\n   - Follows English locale conventions (date formats, number formats, etc.)\n   - Preserves any interpolation variables or placeholders (e.g., {{count}}, {symbol})\n   - Uses terminology consistent with the existing en-US.ts translations\n4. Update frontend/src/i18n/locales/en-US.ts with the new/updated translations, placing them in the same section (matching the comment groups) as the Vietnamese file\n5. Do NOT remove any existing keys from en-US.ts that are not in vi-VN.ts"
+  }
+}

@@ -31,7 +31,7 @@ func NewPerformanceEngine(database *sql.DB, router *infra.DataSourceRouter) *Per
 }
 
 // ComputeTWR computes the time-weighted return using chain-linking of sub-period returns.
-func (e *PerformanceEngine) ComputeTWR(ctx context.Context, userID int64, startDate, endDate time.Time) (float64, error) {
+func (e *PerformanceEngine) ComputeTWR(ctx context.Context, userID string, startDate, endDate time.Time) (float64, error) {
 	snapshots, err := e.GetEquityCurve(ctx, userID, startDate, endDate)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get equity curve: %w", err)
@@ -71,7 +71,7 @@ func (e *PerformanceEngine) ComputeTWR(ctx context.Context, userID int64, startD
 }
 
 // ComputeMWRR computes the money-weighted rate of return using Newton-Raphson IRR.
-func (e *PerformanceEngine) ComputeMWRR(ctx context.Context, userID int64, startDate, endDate time.Time) (float64, error) {
+func (e *PerformanceEngine) ComputeMWRR(ctx context.Context, userID string, startDate, endDate time.Time) (float64, error) {
 	startNAV, err := e.getNAVAtDate(ctx, userID, startDate)
 	if err != nil || startNAV <= 0 {
 		return 0, nil
@@ -144,7 +144,7 @@ func (e *PerformanceEngine) ComputeMWRR(ctx context.Context, userID int64, start
 }
 
 // StoreNAVSnapshot stores a daily NAV snapshot for a user.
-func (e *PerformanceEngine) StoreNAVSnapshot(ctx context.Context, userID int64, nav float64) error {
+func (e *PerformanceEngine) StoreNAVSnapshot(ctx context.Context, userID string, nav float64) error {
 	loc := time.FixedZone("ICT", 7*3600)
 	snapshotDate := time.Now().In(loc).Truncate(24 * time.Hour)
 
@@ -158,13 +158,13 @@ func (e *PerformanceEngine) StoreNAVSnapshot(ctx context.Context, userID int64, 
 		return fmt.Errorf("failed to store NAV snapshot: %w", err)
 	}
 
-	log.Printf("[PerformanceEngine] Stored NAV snapshot for user %d: %.2f VND on %s",
+	log.Printf("[PerformanceEngine] Stored NAV snapshot for user %s: %.2f VND on %s",
 		userID, nav, snapshotDate.Format("2006-01-02"))
 	return nil
 }
 
 // GetEquityCurve retrieves the NAV equity curve for a user over a date range.
-func (e *PerformanceEngine) GetEquityCurve(ctx context.Context, userID int64, startDate, endDate time.Time) ([]model.NAVSnapshot, error) {
+func (e *PerformanceEngine) GetEquityCurve(ctx context.Context, userID string, startDate, endDate time.Time) ([]model.NAVSnapshot, error) {
 	rows, err := e.db.QueryContext(ctx,
 		`SELECT nav, snapshot_date FROM nav_snapshots
 		 WHERE user_id = $1 AND snapshot_date >= $2 AND snapshot_date <= $3
@@ -188,7 +188,7 @@ func (e *PerformanceEngine) GetEquityCurve(ctx context.Context, userID int64, st
 }
 
 // FetchBenchmarkComparison fetches VN-Index and VN30 data and computes benchmark comparison.
-func (e *PerformanceEngine) FetchBenchmarkComparison(ctx context.Context, userID int64, startDate, endDate time.Time) (model.BenchmarkData, error) {
+func (e *PerformanceEngine) FetchBenchmarkComparison(ctx context.Context, userID string, startDate, endDate time.Time) (model.BenchmarkData, error) {
 	result := model.BenchmarkData{}
 
 	portfolioReturn, err := e.ComputeTWR(ctx, userID, startDate, endDate)
@@ -248,7 +248,7 @@ func (e *PerformanceEngine) fetchIndexReturn(ctx context.Context, indexName stri
 }
 
 // ComputePerformanceByAssetType computes the return contribution of each asset type.
-func (e *PerformanceEngine) ComputePerformanceByAssetType(ctx context.Context, userID int64, startDate, endDate time.Time) (map[model.AssetType]float64, error) {
+func (e *PerformanceEngine) ComputePerformanceByAssetType(ctx context.Context, userID string, startDate, endDate time.Time) (map[model.AssetType]float64, error) {
 	result := make(map[model.AssetType]float64)
 
 	rows, err := e.db.QueryContext(ctx,
@@ -290,7 +290,7 @@ func (e *PerformanceEngine) ComputePerformanceByAssetType(ctx context.Context, u
 }
 
 // GetPerformanceMetrics returns the full set of performance analytics for a user.
-func (e *PerformanceEngine) GetPerformanceMetrics(ctx context.Context, userID int64, startDate, endDate time.Time) (model.PerformanceMetrics, error) {
+func (e *PerformanceEngine) GetPerformanceMetrics(ctx context.Context, userID string, startDate, endDate time.Time) (model.PerformanceMetrics, error) {
 	metrics := model.PerformanceMetrics{
 		PerformanceByType: make(map[model.AssetType]float64),
 	}
@@ -334,7 +334,7 @@ func (e *PerformanceEngine) GetPerformanceMetrics(ctx context.Context, userID in
 }
 
 // getCashFlowEvents retrieves external cash flow events for TWR and MWRR calculations.
-func (e *PerformanceEngine) getCashFlowEvents(ctx context.Context, userID int64, startDate, endDate time.Time) ([]model.CashFlowEvent, error) {
+func (e *PerformanceEngine) getCashFlowEvents(ctx context.Context, userID string, startDate, endDate time.Time) ([]model.CashFlowEvent, error) {
 	rows, err := e.db.QueryContext(ctx,
 		`SELECT transaction_date, transaction_type, total_value
 		 FROM transactions
@@ -375,7 +375,7 @@ func (e *PerformanceEngine) getCashFlowEvents(ctx context.Context, userID int64,
 }
 
 // getNAVAtDate retrieves the NAV snapshot closest to (on or before) the given date.
-func (e *PerformanceEngine) getNAVAtDate(ctx context.Context, userID int64, date time.Time) (float64, error) {
+func (e *PerformanceEngine) getNAVAtDate(ctx context.Context, userID string, date time.Time) (float64, error) {
 	var nav float64
 	err := e.db.QueryRowContext(ctx,
 		`SELECT nav FROM nav_snapshots

@@ -113,7 +113,7 @@ export function createRectangle(start: DrawingPoint, end: DrawingPoint): Rectang
 
 // ── localStorage persistence ───────────────────────────────────────────────
 
-const STORAGE_PREFIX = "myfi-drawings-";
+const STORAGE_PREFIX = "ezistock-drawings-";
 
 function storageKey(symbol: string): string {
   return `${STORAGE_PREFIX}${symbol}`;

@@ -266,6 +266,14 @@ export const INDICATOR_REGISTRY: IndicatorRegistryEntry[] = [
     paramDefs: [],
     color: COLORS.mint,
   },
+  {
+    key: "mfi",
+    name: "MFI",
+    pane: "oscillator",
+    category: "Volume",
+    paramDefs: [{ name: "period", label: "Period", default: 14, min: 1, max: 100 }],
+    color: COLORS.gold,
+  },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -332,6 +340,7 @@ import {
   computeATR,
   computeStdDev,
   computeOBV,
+  computeMFI,
   computeLinearRegression,
 } from "./indicators";
 
@@ -385,6 +394,8 @@ export function computeIndicator(
       return { type: "line", data: computeStdDev(bars, p.period) };
     case "obv":
       return { type: "line", data: computeOBV(bars) };
+    case "mfi":
+      return { type: "line", data: computeMFI(bars, p.period) };
     case "bollinger": {
       const res: BollingerBandsResult[] = computeBollingerBands(bars, p.period, p.stdDev);
       return {

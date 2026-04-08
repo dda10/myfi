@@ -1,13 +1,33 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"myfi-backend/internal/domain/screener"
+	"myfi-backend/internal/domain/watchlist"
+)
 
 // --- Transaction (from transaction_ledger.go) ---
+
+// Asset represents a user's financial asset holding with cost basis tracking.
+type Asset struct {
+	ID              int64     `json:"id"`
+	UserID          string    `json:"userId"`
+	AssetType       AssetType `json:"assetType"`
+	Symbol          string    `json:"symbol"`
+	Quantity        float64   `json:"quantity"`
+	AverageCost     float64   `json:"averageCost"`
+	AcquisitionDate time.Time `json:"acquisitionDate"`
+	Account         string    `json:"account"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
+}
 
 // Transaction represents a single stock transaction in the ledger.
 type Transaction struct {
 	ID              int64           `json:"id"`
-	UserID          int64           `json:"userId"`
+	UserID          string          `json:"userId"`
+	AssetType       AssetType       `json:"assetType"`
 	Symbol          string          `json:"symbol"`
 	Quantity        float64         `json:"quantity"`
 	UnitPrice       float64         `json:"unitPrice"`
@@ -23,7 +43,7 @@ type Transaction struct {
 // Holding represents a user's stock holding.
 type Holding struct {
 	ID              int64     `json:"id"`
-	UserID          int64     `json:"userId"`
+	UserID          string    `json:"userId"`
 	Symbol          string    `json:"symbol"`
 	Quantity        float64   `json:"quantity"`
 	AverageCost     float64   `json:"averageCost"`
@@ -58,125 +78,27 @@ type SellResult struct {
 	RealizedPL    float64 `json:"realizedPL"`
 }
 
-// --- Screener (from screener_service.go) ---
+// --- Screener (canonical definition in domain/screener) ---
 
-// ScreenerFilters defines all filter criteria for the stock screener.
-type ScreenerFilters struct {
-	MinPE            *float64      `json:"minPE,omitempty"`
-	MaxPE            *float64      `json:"maxPE,omitempty"`
-	MinPB            *float64      `json:"minPB,omitempty"`
-	MaxPB            *float64      `json:"maxPB,omitempty"`
-	MinMarketCap     *float64      `json:"minMarketCap,omitempty"`
-	MinEVEBITDA      *float64      `json:"minEVEBITDA,omitempty"`
-	MaxEVEBITDA      *float64      `json:"maxEVEBITDA,omitempty"`
-	MinROE           *float64      `json:"minROE,omitempty"`
-	MaxROE           *float64      `json:"maxROE,omitempty"`
-	MinROA           *float64      `json:"minROA,omitempty"`
-	MaxROA           *float64      `json:"maxROA,omitempty"`
-	MinRevenueGrowth *float64      `json:"minRevenueGrowth,omitempty"`
-	MaxRevenueGrowth *float64      `json:"maxRevenueGrowth,omitempty"`
-	MinProfitGrowth  *float64      `json:"minProfitGrowth,omitempty"`
-	MaxProfitGrowth  *float64      `json:"maxProfitGrowth,omitempty"`
-	MinDivYield      *float64      `json:"minDivYield,omitempty"`
-	MaxDivYield      *float64      `json:"maxDivYield,omitempty"`
-	MinDebtToEquity  *float64      `json:"minDebtToEquity,omitempty"`
-	MaxDebtToEquity  *float64      `json:"maxDebtToEquity,omitempty"`
-	Sectors          []ICBSector   `json:"sectors,omitempty"`
-	Exchanges        []string      `json:"exchanges,omitempty"`
-	SectorTrends     []SectorTrend `json:"sectorTrends,omitempty"`
-	SortBy           string        `json:"sortBy"`
-	SortOrder        string        `json:"sortOrder"`
-	Page             int           `json:"page"`
-	PageSize         int           `json:"pageSize"`
-}
+type ScreenerFilters = screener.ScreenerFilters
+type ScreenerResult = screener.ScreenerResult
+type ScreenerResponse = screener.ScreenerResponse
+type FilterPreset = screener.FilterPreset
 
-// ScreenerResult represents a single stock in the screener output.
-type ScreenerResult struct {
-	Symbol        string      `json:"symbol"`
-	Exchange      string      `json:"exchange"`
-	Sector        ICBSector   `json:"sector"`
-	SectorName    string      `json:"sectorName"`
-	MarketCap     float64     `json:"marketCap"`
-	PE            float64     `json:"pe"`
-	PB            float64     `json:"pb"`
-	EVEBITDA      float64     `json:"evEbitda"`
-	ROE           float64     `json:"roe"`
-	ROA           float64     `json:"roa"`
-	RevenueGrowth float64     `json:"revenueGrowth"`
-	ProfitGrowth  float64     `json:"profitGrowth"`
-	DivYield      float64     `json:"divYield"`
-	DebtToEquity  float64     `json:"debtToEquity"`
-	SectorTrend   SectorTrend `json:"sectorTrend"`
-}
+// --- Watchlist (canonical definition in domain/watchlist) ---
 
-// ScreenerResponse wraps paginated screener results.
-type ScreenerResponse struct {
-	Data       []ScreenerResult `json:"data"`
-	Total      int              `json:"total"`
-	Page       int              `json:"page"`
-	PageSize   int              `json:"pageSize"`
-	TotalPages int              `json:"totalPages"`
-}
-
-// FilterPreset represents a saved set of screener filter criteria.
-type FilterPreset struct {
-	ID        int64           `json:"id"`
-	UserID    int64           `json:"userId"`
-	Name      string          `json:"name"`
-	Filters   ScreenerFilters `json:"filters"`
-	CreatedAt time.Time       `json:"createdAt"`
-}
-
-// --- Macro (from macro_service.go) ---
-
-// MacroIndicator represents a single macroeconomic indicator.
-type MacroIndicator struct {
-	Name        string  `json:"name"`
-	Code        string  `json:"code"`
-	Value       float64 `json:"value"`
-	Unit        string  `json:"unit"`
-	Period      string  `json:"period"`
-	Country     string  `json:"country"`
-	Source      string  `json:"source"`
-	Description string  `json:"description"`
-}
-
-// MacroData contains all macroeconomic indicators.
-type MacroData struct {
-	Indicators []MacroIndicator `json:"indicators"`
-	IsStale    bool             `json:"isStale"`
-}
-
-// --- Watchlist (from watchlist_service.go) ---
-
-// Watchlist represents a named watchlist belonging to a user.
-type Watchlist struct {
-	ID        int               `json:"id"`
-	UserID    int               `json:"userId"`
-	Name      string            `json:"name"`
-	Symbols   []WatchlistSymbol `json:"symbols"`
-	CreatedAt time.Time         `json:"createdAt"`
-}
-
-// WatchlistSymbol represents a symbol entry within a watchlist.
-type WatchlistSymbol struct {
-	ID              int       `json:"id"`
-	WatchlistID     int       `json:"watchlistId"`
-	Symbol          string    `json:"symbol"`
-	Position        int       `json:"position"`
-	PriceAlertAbove *float64  `json:"priceAlertAbove,omitempty"`
-	PriceAlertBelow *float64  `json:"priceAlertBelow,omitempty"`
-	CreatedAt       time.Time `json:"createdAt"`
-}
+type Watchlist = watchlist.Watchlist
+type WatchlistSymbol = watchlist.WatchlistSymbol
 
 // --- Performance Engine (from performance_engine.go) ---
 
 // PerformanceMetrics contains all portfolio performance analytics.
 type PerformanceMetrics struct {
-	TWR                 float64       `json:"twr"`
-	MWRR                float64       `json:"mwrr"`
-	EquityCurve         []NAVSnapshot `json:"equityCurve"`
-	BenchmarkComparison BenchmarkData `json:"benchmarkComparison"`
+	TWR                 float64               `json:"twr"`
+	MWRR                float64               `json:"mwrr"`
+	EquityCurve         []NAVSnapshot         `json:"equityCurve"`
+	BenchmarkComparison BenchmarkData         `json:"benchmarkComparison"`
+	PerformanceByType   map[AssetType]float64 `json:"performanceByType,omitempty"`
 }
 
 // NAVSnapshot represents a daily NAV data point for the equity curve.
@@ -279,12 +201,11 @@ type SectorStocksResult struct {
 // --- Risk Service (from risk_service.go) ---
 
 // RiskMetrics contains portfolio-level and per-holding risk analytics.
-// Requirement 27: Sharpe ratio, max drawdown, beta, volatility, VaR, risk contribution.
 type RiskMetrics struct {
 	SharpeRatio      float64            `json:"sharpeRatio"`
 	MaxDrawdown      float64            `json:"maxDrawdown"`
 	Beta             float64            `json:"beta"`
 	Volatility       float64            `json:"volatility"`
 	VaR95            float64            `json:"var95"`
-	RiskContribution map[string]float64 `json:"riskContribution"` // symbol -> contribution %
+	RiskContribution map[string]float64 `json:"riskContribution"`
 }

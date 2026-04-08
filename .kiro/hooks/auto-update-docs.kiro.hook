@@ -1,0 +1,29 @@
+{
+  "enabled": true,
+  "name": "Auto Update Docs on Source Change",
+  "description": "Watches all source files across the monorepo (Go, TypeScript, Python, proto, SQL migrations, config files) and asks the agent to update relevant documentation in the README or docs folder when changes are detected.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.go",
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.py",
+      "**/*.proto",
+      "**/*.sql",
+      "**/Dockerfile",
+      "**/go.mod",
+      "**/package.json",
+      "**/pyproject.toml",
+      "**/requirements.txt",
+      "**/*.toml",
+      "**/*.yaml",
+      "**/*.yml"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file was just edited. Review the change and determine if any project documentation needs updating. Check the README.md at the repo root and any docs/ folder if one exists. Update documentation to reflect the change if it affects: API endpoints, commands, project structure, configuration, dependencies, architecture, or feature descriptions. Only make doc changes that are clearly warranted by the code change — don't over-document trivial edits."
+  }
+}

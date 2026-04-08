@@ -42,7 +42,7 @@ interface DividendHistory {
 
 async function apiFetch<T>(path: string): Promise<T | null> {
   try {
-    const token = typeof window !== "undefined" ? localStorage.getItem("myfi-token") : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("ezistock-token") : null;
     const res = await fetch(`${API_URL}${path}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
@@ -80,7 +80,7 @@ function actionLabel(type: CorporateAction["actionType"]) {
 // --- Component ---
 
 export function CorporateActionsCalendar() {
-  const { formatCurrency, formatDate, formatPercent } = useI18n();
+  const { formatCurrency, formatDate, formatPercent, t } = useI18n();
   const [actions, setActions] = useState<CorporateAction[]>([]);
   const [dividendHistories, setDividendHistories] = useState<DividendHistory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,7 +145,7 @@ export function CorporateActionsCalendar() {
       <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Calendar size={18} className="text-emerald-400" />
-          <h2 className="text-lg font-semibold text-white">Corporate Actions</h2>
+          <h2 className="text-lg font-semibold text-white">{t("corporate.title")}</h2>
         </div>
         <div className="flex gap-1 bg-zinc-800 rounded-lg p-0.5">
           {(["upcoming", "history"] as const).map((t) => (
@@ -165,7 +165,7 @@ export function CorporateActionsCalendar() {
       <div className="p-4">
         {tab === "upcoming" ? (
           upcomingWithAlerts.length === 0 ? (
-            <p className="text-zinc-500 text-sm text-center py-8">No upcoming corporate actions</p>
+            <p className="text-zinc-500 text-sm text-center py-8">{t("corporate.no_upcoming")}</p>
           ) : (
             <div className="space-y-2">
               {upcomingWithAlerts.map((action) => (
@@ -187,25 +187,25 @@ export function CorporateActionsCalendar() {
                       {action.isAlert && (
                         <span className="flex items-center gap-1 text-amber-400 text-xs">
                           <Bell size={12} />
-                          {action.daysUntilEx === 0 ? "Today" : `${action.daysUntilEx}d`}
+                          {action.daysUntilEx === 0 ? t("corporate.today") : `${action.daysUntilEx}d`}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <span className="text-zinc-500">Ex-Date</span>
+                      <span className="text-zinc-500">{t("corporate.ex_date")}</span>
                       <p className="text-zinc-300">{formatDate(action.exDate)}</p>
                     </div>
                     <div>
-                      <span className="text-zinc-500">Payment</span>
+                      <span className="text-zinc-500">{t("corporate.payment")}</span>
                       <p className="text-zinc-300">{formatDate(action.paymentDate)}</p>
                     </div>
                     <div>
-                      <span className="text-zinc-500">Amount</span>
+                      <span className="text-zinc-500">{t("corporate.amount")}</span>
                       <p className="text-zinc-300">
                         {action.actionType === "dividend" && action.dividendPerShare
-                          ? formatCurrency(action.dividendPerShare) + "/share"
+                          ? formatCurrency(action.dividendPerShare) + t("corporate.per_share")
                           : action.actionType === "stock_split"
                             ? `${action.splitRatioFrom}:${action.splitRatioTo}`
                             : "—"}
@@ -219,7 +219,7 @@ export function CorporateActionsCalendar() {
         ) : (
           /* Dividend History Tab — Req 30.7 */
           dividendHistories.length === 0 ? (
-            <p className="text-zinc-500 text-sm text-center py-8">No dividend history available</p>
+            <p className="text-zinc-500 text-sm text-center py-8">{t("corporate.no_history")}</p>
           ) : (
             <div className="space-y-2">
               {dividendHistories.map((h) => (

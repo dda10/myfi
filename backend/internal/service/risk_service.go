@@ -40,7 +40,7 @@ func NewRiskService(database *sql.DB, perfEngine *PerformanceEngine, router *inf
 }
 
 // ComputeRiskMetrics returns the full set of risk analytics for a user's portfolio.
-func (r *RiskService) ComputeRiskMetrics(ctx context.Context, userID int64) (model.RiskMetrics, error) {
+func (r *RiskService) ComputeRiskMetrics(ctx context.Context, userID string) (model.RiskMetrics, error) {
 	metrics := model.RiskMetrics{
 		RiskContribution: make(map[string]float64),
 	}
@@ -54,7 +54,7 @@ func (r *RiskService) ComputeRiskMetrics(ctx context.Context, userID int64) (mod
 		return metrics, fmt.Errorf("failed to get equity curve: %w", err)
 	}
 	if len(navHistory) < 2 {
-		log.Printf("[RiskService] Insufficient NAV history for user %d: %d points", userID, len(navHistory))
+		log.Printf("[RiskService] Insufficient NAV history for user %s: %d points", userID, len(navHistory))
 		return metrics, nil
 	}
 
@@ -242,7 +242,7 @@ func (r *RiskService) fetchBenchmarkReturns(ctx context.Context, startDate, endD
 // computeHoldingRiskContribution computes each holding's percentage contribution
 // to total portfolio volatility.
 // Requirement 27.8.
-func (r *RiskService) computeHoldingRiskContribution(ctx context.Context, userID int64, startDate, endDate time.Time, portfolioVol float64) (map[string]float64, error) {
+func (r *RiskService) computeHoldingRiskContribution(ctx context.Context, userID string, startDate, endDate time.Time, portfolioVol float64) (map[string]float64, error) {
 	contribution := make(map[string]float64)
 
 	if portfolioVol == 0 {

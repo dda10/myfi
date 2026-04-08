@@ -13,7 +13,7 @@ import (
 // HandleExportTransactions exports transaction history as CSV.
 // GET /api/export/transactions?start=2024-01-01&end=2024-12-31
 func (h *Handlers) HandleExportTransactions(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	from, to := parseDateRange(c)
 
 	txns, err := h.TransactionLedger.GetTransactionsByUser(c.Request.Context(), userID)
@@ -36,7 +36,7 @@ func (h *Handlers) HandleExportTransactions(c *gin.Context) {
 // HandleExportSnapshot exports the current portfolio snapshot as CSV.
 // GET /api/export/snapshot
 func (h *Handlers) HandleExportSnapshot(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 
 	summary, err := h.PortfolioEngine.GetPortfolioSummary(c.Request.Context(), userID)
 	if err != nil {
@@ -59,7 +59,7 @@ func (h *Handlers) HandleExportSnapshot(c *gin.Context) {
 // HandleExportReport exports a portfolio report as PDF (text-based).
 // GET /api/export/report
 func (h *Handlers) HandleExportReport(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 
 	summary, err := h.PortfolioEngine.GetPortfolioSummary(c.Request.Context(), userID)
 	if err != nil {
@@ -68,7 +68,14 @@ func (h *Handlers) HandleExportReport(c *gin.Context) {
 	}
 
 	rows := holdingsToSnapshotRows(summary.Holdings)
-	data, err := h.ExportService.ExportPortfolioReportPDFBytes(summary.NAV, summary.AllocationByType, rows)
+
+	// Build allocation map from holdings for the report
+	allocation := make(map[model.AssetType]float64)
+	for _, row := range rows {
+		allocation[row.AssetType] += row.MarketValue
+	}
+
+	data, err := h.ExportService.ExportPortfolioReportPDFBytes(summary.NAV, allocation, rows)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -82,7 +89,7 @@ func (h *Handlers) HandleExportReport(c *gin.Context) {
 // HandleExportTax exports a tax report (capital gains) as CSV.
 // GET /api/export/tax?start=2024-01-01&end=2024-12-31
 func (h *Handlers) HandleExportTax(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	from, to := parseDateRange(c)
 
 	txns, err := h.TransactionLedger.GetTransactionsByUser(c.Request.Context(), userID)
@@ -99,7 +106,7 @@ func (h *Handlers) HandleExportTax(c *gin.Context) {
 	}
 	avgCosts := make(map[string]float64, len(summary.Holdings))
 	for _, h := range summary.Holdings {
-		avgCosts[h.Asset.Symbol] = h.Asset.AverageCost
+		avgCosts[h.Holding.Symbol] = h.Holding.AverageCost
 	}
 
 	data, err := h.ExportService.ExportTaxReportCSVBytes(txns, avgCosts, from, to)
@@ -118,10 +125,10 @@ func holdingsToSnapshotRows(holdings []model.HoldingDetail) []service.SnapshotRo
 	rows := make([]service.SnapshotRow, 0, len(holdings))
 	for _, hd := range holdings {
 		rows = append(rows, service.SnapshotRow{
-			AssetType:    hd.Asset.AssetType,
-			Symbol:       hd.Asset.Symbol,
-			Quantity:     hd.Asset.Quantity,
-			AverageCost:  hd.Asset.AverageCost,
+			AssetType:    model.AssetType(model.VNStock), // default to VNStock for EziStock
+			Symbol:       hd.Holding.Symbol,
+			Quantity:     hd.Holding.Quantity,
+			AverageCost:  hd.Holding.AverageCost,
 			CurrentPrice: hd.CurrentPrice,
 			MarketValue:  hd.MarketValue,
 			UnrealizedPL: hd.UnrealizedPL,

@@ -12,7 +12,7 @@ import (
 // HandlePortfolioSummary returns the full portfolio overview for the authenticated user.
 // GET /api/portfolio/summary
 func (h *Handlers) HandlePortfolioSummary(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	summary, err := h.PortfolioEngine.GetPortfolioSummary(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -45,7 +45,7 @@ func (h *Handlers) HandleDeleteAsset(c *gin.Context) {
 // HandleGetTransactions returns all transactions for the authenticated user.
 // GET /api/portfolio/transactions
 func (h *Handlers) HandleGetTransactions(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	txns, err := h.TransactionLedger.GetTransactionsByUser(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -57,7 +57,7 @@ func (h *Handlers) HandleGetTransactions(c *gin.Context) {
 // HandleRecordTransaction records a new transaction.
 // POST /api/portfolio/transactions
 func (h *Handlers) HandleRecordTransaction(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	var tx model.Transaction
 	if err := c.ShouldBindJSON(&tx); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -75,7 +75,7 @@ func (h *Handlers) HandleRecordTransaction(c *gin.Context) {
 // HandlePortfolioPerformance returns performance metrics for the authenticated user.
 // GET /api/portfolio/performance?start=2024-01-01&end=2024-12-31
 func (h *Handlers) HandlePortfolioPerformance(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 
 	start, end := parseDateRange(c)
 	metrics, err := h.PerformanceEngine.GetPerformanceMetrics(c.Request.Context(), userID, start, end)
@@ -89,7 +89,7 @@ func (h *Handlers) HandlePortfolioPerformance(c *gin.Context) {
 // HandlePortfolioRisk returns risk metrics for the authenticated user.
 // GET /api/portfolio/risk
 func (h *Handlers) HandlePortfolioRisk(c *gin.Context) {
-	userID := int64(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	metrics, err := h.RiskService.ComputeRiskMetrics(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

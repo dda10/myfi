@@ -1,0 +1,27 @@
+# Web / gRPC
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+grpcio>=1.68.0
+grpcio-tools>=1.68.0
+protobuf>=5.29.0
+
+# AI / LLM
+langchain>=0.3.0
+langgraph>=0.2.0
+langchain-openai>=0.2.0
+langchain-anthropic>=0.3.0
+langchain-google-genai>=2.0.0
+
+# Data / ML
+pandas>=2.2.0
+numpy>=1.26.0
+scikit-learn>=1.5.0
+pyarrow>=18.0.0
+duckdb>=1.1.0
+
+# Infrastructure
+boto3>=1.35.0
+psycopg[binary]>=3.2.0
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+httpx>=0.28.0

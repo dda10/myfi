@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"myfi-backend/internal/model"
+	"myfi-backend/internal/testutil"
 )
 
 // newTestPerformanceEngine creates a PerformanceEngine backed by a real PostgreSQL
 // test container with all migrations applied and a seeded test user (id=1).
 func newTestPerformanceEngine(t *testing.T) *PerformanceEngine {
 	t.Helper()
-	db := setupTestDB(t)
+	db := testutil.SetupPostgresTestDB(t)
 	return NewPerformanceEngine(db, nil) // nil router — benchmark tests are separate
 }
 

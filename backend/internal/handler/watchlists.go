@@ -12,7 +12,7 @@ import (
 // HandleGetWatchlists returns all watchlists for the authenticated user.
 // GET /api/watchlists
 func (h *Handlers) HandleGetWatchlists(c *gin.Context) {
-	userID := int(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	lists, err := h.WatchlistService.GetWatchlists(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -24,7 +24,7 @@ func (h *Handlers) HandleGetWatchlists(c *gin.Context) {
 // HandleCreateWatchlist creates a new watchlist.
 // POST /api/watchlists
 func (h *Handlers) HandleCreateWatchlist(c *gin.Context) {
-	userID := int(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	var body struct {
 		Name string `json:"name"`
 	}
@@ -43,7 +43,7 @@ func (h *Handlers) HandleCreateWatchlist(c *gin.Context) {
 // HandleRenameWatchlist renames an existing watchlist.
 // PUT /api/watchlists/:id
 func (h *Handlers) HandleRenameWatchlist(c *gin.Context) {
-	userID := int(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	wlID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid watchlist id"})
@@ -66,7 +66,7 @@ func (h *Handlers) HandleRenameWatchlist(c *gin.Context) {
 // HandleDeleteWatchlist deletes a watchlist.
 // DELETE /api/watchlists/:id
 func (h *Handlers) HandleDeleteWatchlist(c *gin.Context) {
-	userID := int(c.MustGet("claims").(*model.JWTClaims).UserID)
+	userID := c.MustGet("claims").(*model.JWTClaims).UserID
 	wlID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid watchlist id"})

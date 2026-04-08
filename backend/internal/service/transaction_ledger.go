@@ -27,8 +27,8 @@ func (l *TransactionLedger) RecordTransaction(ctx context.Context, tx model.Tran
 	if err := model.ValidateAssetType(tx.AssetType); err != nil {
 		return 0, err
 	}
-	if tx.UserID <= 0 {
-		return 0, fmt.Errorf("invalid user ID: %d", tx.UserID)
+	if tx.UserID == "" {
+		return 0, fmt.Errorf("invalid user ID: %s", tx.UserID)
 	}
 	if tx.Symbol == "" {
 		return 0, fmt.Errorf("symbol is required")
@@ -62,7 +62,7 @@ func (l *TransactionLedger) RecordTransaction(ctx context.Context, tx model.Tran
 }
 
 // GetTransactionsByUser retrieves all transactions for a given user, ordered by date descending.
-func (l *TransactionLedger) GetTransactionsByUser(ctx context.Context, userID int64) ([]model.Transaction, error) {
+func (l *TransactionLedger) GetTransactionsByUser(ctx context.Context, userID string) ([]model.Transaction, error) {
 	rows, err := l.db.QueryContext(ctx,
 		`SELECT id, user_id, asset_type, symbol, quantity, unit_price, total_value, transaction_date, transaction_type, notes, created_at
 		 FROM transactions WHERE user_id = $1 ORDER BY transaction_date DESC`,
@@ -77,7 +77,7 @@ func (l *TransactionLedger) GetTransactionsByUser(ctx context.Context, userID in
 }
 
 // GetTransactionsBySymbol retrieves transactions for a specific user and symbol.
-func (l *TransactionLedger) GetTransactionsBySymbol(ctx context.Context, userID int64, symbol string) ([]model.Transaction, error) {
+func (l *TransactionLedger) GetTransactionsBySymbol(ctx context.Context, userID string, symbol string) ([]model.Transaction, error) {
 	rows, err := l.db.QueryContext(ctx,
 		`SELECT id, user_id, asset_type, symbol, quantity, unit_price, total_value, transaction_date, transaction_type, notes, created_at
 		 FROM transactions WHERE user_id = $1 AND symbol = $2 ORDER BY transaction_date DESC`,

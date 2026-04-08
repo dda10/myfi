@@ -1,0 +1,236 @@
+syntax = "proto3";
+
+package ezistock;
+
+option go_package = "myfi-backend/internal/generated/proto/ezistockpb";
+
+// AgentService provides AI-powered stock analysis, investment ideas,
+// chat, and hot topics detection via the Python AI Service.
+// Requirements: 1.2, 43.4, 43.5
+service AgentService {
+  // AnalyzeStock performs comprehensive stock analysis using the multi-agent system.
+  rpc AnalyzeStock(AnalyzeStockRequest) returns (AnalyzeStockResponse);
+
+  // GenerateInvestmentIdeas produces proactive buy/sell recommendations.
+  rpc GenerateInvestmentIdeas(IdeaRequest) returns (IdeaResponse);
+
+  // Chat handles conversational AI interactions with citation support.
+  rpc Chat(ChatRequest) returns (ChatResponse);
+
+  // GetHotTopics detects trending stocks and market events.
+  rpc GetHotTopics(HotTopicsRequest) returns (HotTopicsResponse);
+}
+
+// ---------------------------------------------------------------------------
+// AnalyzeStock
+// ---------------------------------------------------------------------------
+
+message MarketData {
+  string symbol = 1;
+  repeated OHLCV ohlcv = 2;
+  repeated FinancialMetric financials = 3;
+  repeated NewsArticle news = 4;
+}
+
+message OHLCV {
+  string date = 1;
+  double open = 2;
+  double high = 3;
+  double low = 4;
+  double close = 5;
+  int64 volume = 6;
+}
+
+message FinancialMetric {
+  string name = 1;
+  double value = 2;
+  string period = 3;
+}
+
+message NewsArticle {
+  string title = 1;
+  string url = 2;
+  string source = 3;
+  string published_at = 4;
+  string summary = 5;
+}
+
+message Portfolio {
+  repeated Holding holdings = 1;
+  double nav = 2;
+  string currency = 3;
+}
+
+message Holding {
+  string symbol = 1;
+  int64 quantity = 2;
+  double avg_cost = 3;
+  double current_price = 4;
+  double market_value = 5;
+  double pnl = 6;
+  double pnl_percent = 7;
+}
+
+message SectorContext {
+  string sector_code = 1;
+  string sector_name = 2;
+  string trend = 3; // "uptrend", "downtrend", "sideways"
+  double sector_change_percent = 4;
+  double stock_relative_performance = 5;
+}
+
+message Observation {
+  string id = 1;
+  string pattern_type = 2;
+  string symbol = 3;
+  string description = 4;
+  double confidence = 5;
+  string observed_at = 6;
+  string outcome = 7;
+}
+
+message AnalyzeStockRequest {
+  string symbol = 1;
+  MarketData market_data = 2;
+  Portfolio portfolio = 3;
+  SectorContext sector_context = 4;
+  repeated Observation knowledge_history = 5;
+}
+
+message TechnicalAnalysis {
+  string symbol = 1;
+  string composite_signal = 2; // "strongly_bullish", "bullish", "neutral", "bearish", "strongly_bearish"
+  map<string, double> indicators = 3;
+  repeated string support_levels = 4;
+  repeated string resistance_levels = 5;
+  repeated string patterns = 6;
+  string smart_money_flow = 7; // "strong_inflow", "moderate_inflow", "neutral", "moderate_outflow", "strong_outflow"
+  repeated string ma_crossovers = 8;
+}
+
+message NewsAnalysis {
+  string symbol = 1;
+  string sentiment = 2; // "positive", "negative", "neutral"
+  double confidence = 3;
+  repeated string catalysts = 4;
+  repeated string risk_factors = 5;
+  repeated NewsArticle articles = 6;
+}
+
+message InvestmentRecommendation {
+  string symbol = 1;
+  string action = 2; // "buy", "sell", "hold"
+  double target_price = 3;
+  double upside_percent = 4;
+  int32 confidence_score = 5; // 0-100
+  string risk_level = 6; // "low", "medium", "high"
+  string reasoning = 7;
+  repeated string technical_factors = 8;
+  repeated string news_factors = 9;
+}
+
+message TradingStrategy {
+  string symbol = 1;
+  string signal_direction = 2; // "long", "short"
+  double entry_price = 3;
+  double stop_loss = 4;
+  double take_profit = 5;
+  double risk_reward_ratio = 6;
+  int32 confidence_score = 7;
+  double position_size_percent = 8;
+  string reasoning = 9;
+}
+
+message Citation {
+  string source = 1;
+  string url = 2;
+  string claim = 3;
+  string data_point = 4;
+}
+
+message AnalyzeStockResponse {
+  TechnicalAnalysis technical = 1;
+  NewsAnalysis news = 2;
+  InvestmentRecommendation recommendation = 3;
+  TradingStrategy strategy = 4;
+  repeated Citation citations = 5;
+  string disclaimer = 6;
+}
+
+// ---------------------------------------------------------------------------
+// GenerateInvestmentIdeas
+// ---------------------------------------------------------------------------
+
+message IdeaRequest {
+  string user_id = 1;
+  Portfolio portfolio = 2;
+  repeated string watchlist_symbols = 3;
+  int32 max_ideas = 4;
+}
+
+message InvestmentIdea {
+  string symbol = 1;
+  string signal_direction = 2; // "buy", "sell"
+  double entry_price = 3;
+  double target_price = 4;
+  int32 confidence_score = 5;
+  string reasoning = 6;
+  double historical_accuracy = 7;
+}
+
+message IdeaResponse {
+  repeated InvestmentIdea ideas = 1;
+  string generated_at = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+
+message ChatMessage {
+  string role = 1; // "user", "assistant"
+  string content = 2;
+  string timestamp = 3;
+}
+
+message ProactiveSuggestion {
+  string text = 1;
+  string type = 2; // "hot_topic", "outlier", "portfolio_alert"
+  string symbol = 3;
+}
+
+message ChatRequest {
+  string user_id = 1;
+  string message = 2;
+  repeated ChatMessage history = 3;
+  Portfolio portfolio = 4;
+}
+
+message ChatResponse {
+  string response = 1;
+  repeated Citation citations = 2;
+  repeated ProactiveSuggestion suggestions = 3;
+  string disclaimer = 4;
+}
+
+// ---------------------------------------------------------------------------
+// GetHotTopics
+// ---------------------------------------------------------------------------
+
+message HotTopicsRequest {
+  int32 limit = 1;
+  string market = 2; // "HOSE", "HNX", "UPCOM", or empty for all
+}
+
+message HotTopic {
+  string symbol = 1;
+  string topic = 2;
+  string category = 3; // "price_movement", "volume_spike", "news", "foreign_flow"
+  double relevance_score = 4;
+  string summary = 5;
+}
+
+message HotTopicsResponse {
+  repeated HotTopic topics = 1;
+  string generated_at = 2;
+}

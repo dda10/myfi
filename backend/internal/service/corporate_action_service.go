@@ -15,19 +15,17 @@ import (
 // and bonus share processing for portfolio holdings.
 // Requirements: 30.1, 30.2, 30.3, 30.7
 type CorporateActionService struct {
-	db       *sql.DB
-	router   *infra.DataSourceRouter
-	ledger   *TransactionLedger
-	registry *AssetRegistry
+	db     *sql.DB
+	router *infra.DataSourceRouter
+	ledger *TransactionLedger
 }
 
 // NewCorporateActionService creates a new CorporateActionService instance.
-func NewCorporateActionService(db *sql.DB, router *infra.DataSourceRouter, ledger *TransactionLedger, registry *AssetRegistry) *CorporateActionService {
+func NewCorporateActionService(db *sql.DB, router *infra.DataSourceRouter, ledger *TransactionLedger) *CorporateActionService {
 	return &CorporateActionService{
-		db:       db,
-		router:   router,
-		ledger:   ledger,
-		registry: registry,
+		db:     db,
+		router: router,
+		ledger: ledger,
 	}
 }
 
@@ -79,17 +77,12 @@ func (s *CorporateActionService) FetchSplitAndBonusEvents(ctx context.Context, s
 }
 
 // fetchCorporateEventsForSymbol fetches all corporate action events for a single symbol
-// via the Data_Source_Router. Uses financial statement data as a proxy since vnstock-go
-// doesn't expose a dedicated corporate actions endpoint.
+// via the Data_Source_Router.
 func (s *CorporateActionService) fetchCorporateEventsForSymbol(ctx context.Context, symbol string) ([]model.CorporateAction, error) {
 	if s.router == nil {
 		return nil, fmt.Errorf("data source router not available")
 	}
 
-	// The vnstock-go library doesn't have a dedicated corporate actions endpoint.
-	// In production, this would parse dividend/split data from financial statements
-	// or a dedicated corporate events API. For now, we return empty and rely on
-	// manual event creation or future API integration.
 	log.Printf("[CorporateActionService] Fetching corporate events for %s via Data_Source_Router", symbol)
 	return nil, nil
 }
@@ -97,7 +90,7 @@ func (s *CorporateActionService) fetchCorporateEventsForSymbol(ctx context.Conte
 // RecordDividendPayment auto-records a dividend payment as a transaction in the
 // Transaction_Ledger for a user's holding.
 // Requirement 30.2: auto-record dividend payments as transactions.
-func (s *CorporateActionService) RecordDividendPayment(ctx context.Context, userID int64, action model.CorporateAction) (*model.DividendRecord, error) {
+func (s *CorporateActionService) RecordDividendPayment(ctx context.Context, userID string, action model.CorporateAction, holdingQty float64) (*model.DividendRecord, error) {
 	if action.ActionType != model.CorporateActionDividend {
 		return nil, fmt.Errorf("expected dividend action, got %s", action.ActionType)
 	}
@@ -107,32 +100,18 @@ func (s *CorporateActionService) RecordDividendPayment(ctx context.Context, user
 	if action.Symbol == "" {
 		return nil, fmt.Errorf("symbol is required")
 	}
-
-	// Find the user's holding for this symbol
-	assets, err := s.registry.GetAssetsByUser(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user assets: %w", err)
+	if holdingQty <= 0 {
+		return nil, fmt.Errorf("holding quantity must be positive")
 	}
 
-	var holding *model.Asset
-	for i := range assets {
-		if assets[i].Symbol == action.Symbol && assets[i].AssetType == model.VNStock {
-			holding = &assets[i]
-			break
-		}
-	}
-	if holding == nil {
-		return nil, fmt.Errorf("no holding found for symbol %s", action.Symbol)
-	}
-
-	totalAmount := holding.Quantity * action.DividendPerShare
+	totalAmount := holdingQty * action.DividendPerShare
 
 	// Record dividend transaction in the ledger
 	tx := model.Transaction{
 		UserID:          userID,
 		AssetType:       model.VNStock,
 		Symbol:          action.Symbol,
-		Quantity:        holding.Quantity,
+		Quantity:        holdingQty,
 		UnitPrice:       action.DividendPerShare,
 		TotalValue:      totalAmount,
 		TransactionDate: action.PaymentDate,
@@ -151,7 +130,7 @@ func (s *CorporateActionService) RecordDividendPayment(ctx context.Context, user
 		ExDate:           action.ExDate,
 		PaymentDate:      action.PaymentDate,
 		DividendPerShare: action.DividendPerShare,
-		SharesHeld:       holding.Quantity,
+		SharesHeld:       holdingQty,
 		TotalAmount:      totalAmount,
 		TransactionID:    txID,
 		CreatedAt:        time.Now(),
@@ -163,7 +142,8 @@ func (s *CorporateActionService) RecordDividendPayment(ctx context.Context, user
 // AdjustForStockSplit adjusts cost basis and quantity for a stock split event.
 // Requirement 30.3: auto-adjust cost basis and quantity for splits.
 // Property 51: For split ratio N:M, new quantity = Q×(N/M), new cost = C×(M/N).
-func (s *CorporateActionService) AdjustForStockSplit(ctx context.Context, userID int64, action model.CorporateAction) (*model.SplitAdjustment, error) {
+// The caller must provide the current holding quantity and average cost.
+func (s *CorporateActionService) AdjustForStockSplit(ctx context.Context, userID string, action model.CorporateAction, oldQuantity, oldCost float64) (*model.SplitAdjustment, error) {
 	if action.ActionType != model.CorporateActionStockSplit {
 		return nil, fmt.Errorf("expected stock_split action, got %s", action.ActionType)
 	}
@@ -174,38 +154,10 @@ func (s *CorporateActionService) AdjustForStockSplit(ctx context.Context, userID
 		return nil, fmt.Errorf("symbol is required")
 	}
 
-	assets, err := s.registry.GetAssetsByUser(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user assets: %w", err)
-	}
-
-	var holding *model.Asset
-	for i := range assets {
-		if assets[i].Symbol == action.Symbol && assets[i].AssetType == model.VNStock {
-			holding = &assets[i]
-			break
-		}
-	}
-	if holding == nil {
-		return nil, fmt.Errorf("no holding found for symbol %s", action.Symbol)
-	}
-
-	oldQuantity := holding.Quantity
-	oldCost := holding.AverageCost
-
 	// Split ratio N:M means each M old shares become N new shares
-	// New quantity = oldQty * (ratioTo / ratioFrom)
-	// New cost = oldCost * (ratioFrom / ratioTo)
 	ratio := action.SplitRatioTo / action.SplitRatioFrom
 	newQuantity := oldQuantity * ratio
 	newCost := oldCost / ratio
-
-	holding.Quantity = newQuantity
-	holding.AverageCost = newCost
-
-	if err := s.registry.UpdateAsset(ctx, *holding); err != nil {
-		return nil, fmt.Errorf("failed to update holding after split: %w", err)
-	}
 
 	log.Printf("[CorporateActionService] Split adjustment for %s: qty %.2f->%.2f, cost %.2f->%.2f (ratio %g:%g)",
 		action.Symbol, oldQuantity, newQuantity, oldCost, newCost, action.SplitRatioFrom, action.SplitRatioTo)
@@ -223,8 +175,8 @@ func (s *CorporateActionService) AdjustForStockSplit(ctx context.Context, userID
 
 // AdjustForBonusShares adjusts quantity and cost basis for a bonus share event.
 // Requirement 30.3: auto-adjust cost basis and quantity for bonus shares.
-// Bonus shares are similar to splits: if ratio is 1:1, each share gets 1 bonus share.
-func (s *CorporateActionService) AdjustForBonusShares(ctx context.Context, userID int64, action model.CorporateAction) (*model.SplitAdjustment, error) {
+// The caller must provide the current holding quantity and average cost.
+func (s *CorporateActionService) AdjustForBonusShares(ctx context.Context, userID string, action model.CorporateAction, oldQuantity, oldCost float64) (*model.SplitAdjustment, error) {
 	if action.ActionType != model.CorporateActionBonusShare {
 		return nil, fmt.Errorf("expected bonus_share action, got %s", action.ActionType)
 	}
@@ -235,38 +187,10 @@ func (s *CorporateActionService) AdjustForBonusShares(ctx context.Context, userI
 		return nil, fmt.Errorf("symbol is required")
 	}
 
-	assets, err := s.registry.GetAssetsByUser(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user assets: %w", err)
-	}
-
-	var holding *model.Asset
-	for i := range assets {
-		if assets[i].Symbol == action.Symbol && assets[i].AssetType == model.VNStock {
-			holding = &assets[i]
-			break
-		}
-	}
-	if holding == nil {
-		return nil, fmt.Errorf("no holding found for symbol %s", action.Symbol)
-	}
-
-	oldQuantity := holding.Quantity
-	oldCost := holding.AverageCost
-
 	// Bonus ratio From:To means for every From shares, you get To bonus shares
-	// Total new shares = oldQty + oldQty * (ratioTo / ratioFrom)
-	// New cost = oldCost * oldQty / newQty (total cost stays the same)
 	bonusShares := oldQuantity * (action.SplitRatioTo / action.SplitRatioFrom)
 	newQuantity := oldQuantity + bonusShares
 	newCost := (oldCost * oldQuantity) / newQuantity
-
-	holding.Quantity = newQuantity
-	holding.AverageCost = newCost
-
-	if err := s.registry.UpdateAsset(ctx, *holding); err != nil {
-		return nil, fmt.Errorf("failed to update holding after bonus shares: %w", err)
-	}
 
 	log.Printf("[CorporateActionService] Bonus share adjustment for %s: qty %.2f->%.2f, cost %.2f->%.2f (ratio %g:%g)",
 		action.Symbol, oldQuantity, newQuantity, oldCost, newCost, action.SplitRatioFrom, action.SplitRatioTo)
@@ -285,7 +209,8 @@ func (s *CorporateActionService) AdjustForBonusShares(ctx context.Context, userI
 // GetDividendHistory retrieves dividend history for a specific holding and computes
 // yield-on-cost.
 // Requirement 30.7: track dividend history per holding to compute yield-on-cost.
-func (s *CorporateActionService) GetDividendHistory(ctx context.Context, userID int64, symbol string) (*model.DividendHistory, error) {
+// The caller must provide the cost basis for yield-on-cost calculation.
+func (s *CorporateActionService) GetDividendHistory(ctx context.Context, userID string, symbol string, costBasis float64) (*model.DividendHistory, error) {
 	if symbol == "" {
 		return nil, fmt.Errorf("symbol is required")
 	}
@@ -319,7 +244,7 @@ func (s *CorporateActionService) GetDividendHistory(ctx context.Context, userID 
 	}
 
 	// Compute yield-on-cost: annual dividend / original cost basis
-	yieldOnCost := ComputeYieldOnCost(records, s.getCostBasis(ctx, userID, symbol))
+	yieldOnCost := ComputeYieldOnCost(records, costBasis)
 
 	return &model.DividendHistory{
 		Symbol:         symbol,
@@ -327,20 +252,6 @@ func (s *CorporateActionService) GetDividendHistory(ctx context.Context, userID 
 		TotalDividends: totalDividends,
 		YieldOnCost:    yieldOnCost,
 	}, nil
-}
-
-// getCostBasis returns the total cost basis for a holding (quantity * average cost).
-func (s *CorporateActionService) getCostBasis(ctx context.Context, userID int64, symbol string) float64 {
-	assets, err := s.registry.GetAssetsByUser(ctx, userID)
-	if err != nil {
-		return 0
-	}
-	for _, a := range assets {
-		if a.Symbol == symbol && a.AssetType == model.VNStock {
-			return a.Quantity * a.AverageCost
-		}
-	}
-	return 0
 }
 
 // ComputeYieldOnCost calculates yield-on-cost from dividend records and cost basis.
@@ -372,7 +283,6 @@ func ComputeYieldOnCost(records []model.DividendRecord, costBasis float64) float
 	durationDays := latest.Sub(earliest).Hours() / 24
 	var annualDividends float64
 	if durationDays < 30 {
-		// Less than a month of data — use total as annual estimate
 		annualDividends = totalDividends
 	} else {
 		years := durationDays / 365.25
@@ -386,17 +296,18 @@ func ComputeYieldOnCost(records []model.DividendRecord, costBasis float64) float
 }
 
 // ProcessCorporateAction is a convenience method that dispatches to the appropriate
-// handler based on the action type.
-func (s *CorporateActionService) ProcessCorporateAction(ctx context.Context, userID int64, action model.CorporateAction) error {
+// handler based on the action type. For split/bonus actions, the caller must provide
+// the current holding quantity and average cost via the holdingQty and avgCost parameters.
+func (s *CorporateActionService) ProcessCorporateAction(ctx context.Context, userID string, action model.CorporateAction, holdingQty, avgCost float64) error {
 	switch action.ActionType {
 	case model.CorporateActionDividend:
-		_, err := s.RecordDividendPayment(ctx, userID, action)
+		_, err := s.RecordDividendPayment(ctx, userID, action, holdingQty)
 		return err
 	case model.CorporateActionStockSplit:
-		_, err := s.AdjustForStockSplit(ctx, userID, action)
+		_, err := s.AdjustForStockSplit(ctx, userID, action, holdingQty, avgCost)
 		return err
 	case model.CorporateActionBonusShare:
-		_, err := s.AdjustForBonusShares(ctx, userID, action)
+		_, err := s.AdjustForBonusShares(ctx, userID, action, holdingQty, avgCost)
 		return err
 	default:
 		return fmt.Errorf("unsupported corporate action type: %s", action.ActionType)

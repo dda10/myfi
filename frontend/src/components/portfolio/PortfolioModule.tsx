@@ -82,7 +82,7 @@ interface RiskMetrics {
 
 type SubTab = "holdings" | "transactions" | "performance" | "risk";
 type TimePeriod = "1W" | "1M" | "3M" | "6M" | "1Y" | "YTD" | "ALL";
-type TxFilter = "all" | "buy" | "sell" | "dividend" | "deposit" | "withdrawal" | "interest";
+type TxFilter = "all" | "buy" | "sell" | "dividend";
 
 const SUB_TABS: { key: SubTab; label: string; icon: React.ReactNode }[] = [
   { key: "holdings", label: "Holdings", icon: <Briefcase size={16} /> },
@@ -92,7 +92,7 @@ const SUB_TABS: { key: SubTab; label: string; icon: React.ReactNode }[] = [
 ];
 
 const TIME_PERIODS: TimePeriod[] = ["1W", "1M", "3M", "6M", "1Y", "YTD", "ALL"];
-const TX_FILTERS: TxFilter[] = ["all", "buy", "sell", "dividend", "deposit", "withdrawal", "interest"];
+const TX_FILTERS: TxFilter[] = ["all", "buy", "sell", "dividend"];
 
 // --- Fetch helper ---
 
@@ -291,7 +291,6 @@ function HoldingsSection({
           <thead>
             <tr className="border-b border-zinc-800 text-zinc-400 text-left">
               <th className="px-4 py-3 font-medium">Symbol</th>
-              <th className="px-4 py-3 font-medium">Type</th>
               <th className="px-4 py-3 font-medium text-right">Qty</th>
               <th className="px-4 py-3 font-medium text-right">Avg Cost</th>
               <th className="px-4 py-3 font-medium text-right">Price</th>
@@ -307,7 +306,6 @@ function HoldingsSection({
               return (
                 <tr key={h.asset.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition">
                   <td className="px-4 py-3 font-semibold text-white">{h.asset.symbol}</td>
-                  <td className="px-4 py-3 text-zinc-400 capitalize">{h.asset.assetType.replace("_", " ")}</td>
                   <td className="px-4 py-3 text-right text-zinc-300">{h.asset.quantity.toLocaleString()}</td>
                   <td className="px-4 py-3 text-right text-zinc-300">{formatCurrency(h.asset.averageCost)}</td>
                   <td className="px-4 py-3 text-right text-zinc-300">{formatCurrency(h.currentPrice)}</td>
@@ -385,7 +383,7 @@ function TransactionsSection({
             </thead>
             <tbody>
               {transactions.map((tx) => {
-                const isBuy = tx.transactionType === "buy" || tx.transactionType === "deposit" || tx.transactionType === "interest" || tx.transactionType === "dividend";
+                const isBuy = tx.transactionType === "buy" || tx.transactionType === "dividend";
                 return (
                   <tr key={tx.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition">
                     <td className="px-4 py-3 text-zinc-300">{formatDate(tx.transactionDate)}</td>

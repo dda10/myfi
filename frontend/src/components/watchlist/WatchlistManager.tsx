@@ -53,7 +53,7 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
 
 export function WatchlistManager() {
   const { setActiveSymbol, setActiveTab } = useApp();
-  const { formatCurrency } = useI18n();
+  const { formatCurrency, t } = useI18n();
 
   // Data state
   const [watchlists, setWatchlists] = useState<WatchlistData[]>([]);
@@ -272,15 +272,15 @@ export function WatchlistManager() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Star size={22} className="text-yellow-400 fill-yellow-400" />
-          <h1 className="text-2xl font-bold text-white">Watchlists</h1>
-          <span className="text-sm text-zinc-500">{watchlists.length} lists</span>
+          <h1 className="text-2xl font-bold text-white">{t("watchlist.title")}</h1>
+          <span className="text-sm text-zinc-500">{t("watchlist.lists_count", { count: String(watchlists.length) })}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition"
           >
-            <Plus size={15} /> New Watchlist
+            <Plus size={15} /> {t("watchlist.new")}
           </button>
           <button
             onClick={() => { fetchWatchlists(); fetchQuotes(); }}
@@ -331,8 +331,8 @@ export function WatchlistManager() {
       {!loading && watchlists.length === 0 && !error && (
         <div className="flex flex-col items-center justify-center py-16 text-zinc-500">
           <Star size={36} className="mb-3 text-zinc-700" />
-          <p className="text-sm">No watchlists yet.</p>
-          <p className="text-xs text-zinc-600 mt-1">Create one to start tracking stocks.</p>
+          <p className="text-sm">{t("watchlist.no_lists")}</p>
+          <p className="text-xs text-zinc-600 mt-1">{t("watchlist.no_lists_hint")}</p>
         </div>
       )}
 
@@ -436,7 +436,7 @@ export function WatchlistManager() {
                 {wl.symbols.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-zinc-500">
                     <Eye size={22} className="mb-2 text-zinc-700" />
-                    <p className="text-sm">No symbols in this watchlist.</p>
+                    <p className="text-sm">{t("watchlist.no_symbols")}</p>
                   </div>
                 ) : (
                   wl.symbols.map((ws, idx) => {
@@ -515,7 +515,7 @@ export function WatchlistManager() {
                         {isAlertOpen && (
                           <div className="mx-3 mb-2 p-3 bg-zinc-800/60 rounded-lg border border-zinc-700 flex items-center gap-3">
                             <div className="flex items-center gap-1.5">
-                              <label className="text-[10px] text-zinc-500 uppercase">Above</label>
+                              <label className="text-[10px] text-zinc-500 uppercase">{t("watchlist.alert_above")}</label>
                               <input
                                 type="number"
                                 value={alertAbove}
@@ -525,7 +525,7 @@ export function WatchlistManager() {
                               />
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-[10px] text-zinc-500 uppercase">Below</label>
+                              <label className="text-[10px] text-zinc-500 uppercase">{t("watchlist.alert_below")}</label>
                               <input
                                 type="number"
                                 value={alertBelow}

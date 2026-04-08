@@ -1,19 +1,171 @@
+# EziStock Platform — Local Development
+# Usage: docker compose up -d
+# Requires: .env file at project root (see .env.example)
+
 services:
+  # ---------------------------------------------------------------------------
+  # Data Stores
+  # ---------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: myfi
-      POSTGRES_USER: myfi
-      POSTGRES_PASSWORD: myfi_dev
+      POSTGRES_DB: ezistock
+      POSTGRES_USER: ezistock
+      POSTGRES_PASSWORD: ezistock_dev
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U myfi -d myfi"]
+      test: ["CMD-SHELL", "pg_isready -U ezistock -d ezistock"]
       interval: 5s
       timeout: 3s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Application Services
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://ezistock:ezistock_dev@postgres:5432/ezistock?sslmode=disable
+      REDIS_URL: redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-ezistock}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      S3_USE_PATH_STYLE: "true"
+      S3_REGION: ${S3_REGION:-us-east-1}
+      AI_GRPC_ADDR: ai-service:50051
+      AI_REST_URL: http://ai-service:8000
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      TZ: Asia/Ho_Chi_Minh
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/api/health",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    ports:
+      - "50051:50051"
+      - "8000:8000"
+    environment:
+      EZISTOCK_DATABASE_URL: postgres://ezistock:ezistock_dev@postgres:5432/ezistock?sslmode=disable
+      EZISTOCK_REDIS_URL: redis://redis:6379/0
+      EZISTOCK_S3_ENDPOINT: http://minio:9000
+      EZISTOCK_S3_BUCKET: ${S3_BUCKET:-ezistock}
+      EZISTOCK_S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      EZISTOCK_S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      EZISTOCK_S3_USE_PATH_STYLE: "true"
+      EZISTOCK_GO_BACKEND_URL: http://backend:8080
+      EZISTOCK_OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      EZISTOCK_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      EZISTOCK_GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      EZISTOCK_LLM_DAILY_BUDGET_USD: ${LLM_DAILY_BUDGET_USD:-10.0}
+      EZISTOCK_DEBUG: ${AI_DEBUG:-false}
+      TZ: Asia/Ho_Chi_Minh
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8080
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
 volumes:
   pgdata:
+  redisdata:
+  miniodata:

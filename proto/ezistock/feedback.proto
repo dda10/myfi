@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package ezistock;
+
+option go_package = "myfi-backend/internal/generated/proto/ezistockpb";
+
+// FeedbackService provides accuracy tracking and performance monitoring
+// for the AI agents and Alpha Mining models, closing the feedback loop.
+// Requirements: 1.2, 43.4, 43.5
+service FeedbackService {
+  // GetAgentAccuracy returns per-agent accuracy scores and bias detection.
+  rpc GetAgentAccuracy(AccuracyRequest) returns (AccuracyResponse);
+
+  // GetModelPerformance returns Alpha Mining model performance metrics.
+  rpc GetModelPerformance(ModelPerfRequest) returns (ModelPerfResponse);
+}
+
+// ---------------------------------------------------------------------------
+// GetAgentAccuracy
+// ---------------------------------------------------------------------------
+
+message AccuracyRequest {
+  string agent_name = 1; // "technical_analyst", "news_analyst", "investment_advisor", "strategy_builder", or empty for all
+  string period = 2; // "7d", "30d", "90d", "all"
+}
+
+message AgentAccuracy {
+  string agent_name = 1;
+  double accuracy_percent = 2;
+  int32 total_predictions = 3;
+  int32 correct_predictions = 4;
+  repeated BiasIndicator biases = 5;
+  string period = 6;
+}
+
+message BiasIndicator {
+  string type = 1; // "bullish_bias", "sector_bias", "recency_bias"
+  double magnitude = 2;
+  string description = 3;
+}
+
+message AccuracyResponse {
+  repeated AgentAccuracy agents = 1;
+  double overall_accuracy = 2;
+  string computed_at = 3;
+}
+
+// ---------------------------------------------------------------------------
+// GetModelPerformance
+// ---------------------------------------------------------------------------
+
+message ModelPerfRequest {
+  string model_name = 1; // specific model or empty for all
+  string period = 2; // "7d", "30d", "90d", "all"
+}
+
+message ModelPerformance {
+  string model_name = 1;
+  string model_version = 2;
+  double accuracy = 3;
+  double precision_score = 4;
+  double recall = 5;
+  double f1_score = 6;
+  map<string, double> feature_importance = 7;
+  string trained_at = 8;
+  string regime_context = 9;
+  bool alpha_decay_detected = 10;
+}
+
+message ModelPerfResponse {
+  repeated ModelPerformance models = 1;
+  string computed_at = 2;
+}

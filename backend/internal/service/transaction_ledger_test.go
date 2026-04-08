@@ -2,14 +2,16 @@ package service
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"myfi-backend/internal/model"
+	"myfi-backend/internal/testutil"
 )
 
 func TestRecordTransaction_Buy(t *testing.T) {
-	db := setupTestDB(t)
+	db := testutil.SetupPostgresTestDB(t)
 	ledger := NewTransactionLedger(db)
 	ctx := context.Background()
 
@@ -52,7 +54,7 @@ func TestRecordTransaction_Buy(t *testing.T) {
 }
 
 func TestRecordTransaction_AllTypes(t *testing.T) {
-	db := setupTestDB(t)
+	db := testutil.SetupPostgresTestDB(t)
 	ledger := NewTransactionLedger(db)
 	ctx := context.Background()
 
@@ -80,7 +82,7 @@ func TestRecordTransaction_AllTypes(t *testing.T) {
 }
 
 func TestTransactionTypeValidation(t *testing.T) {
-	db := setupTestDB(t)
+	db := testutil.SetupPostgresTestDB(t)
 	ledger := NewTransactionLedger(db)
 	ctx := context.Background()
 
@@ -98,13 +100,13 @@ func TestTransactionTypeValidation(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid transaction type, got nil")
 	}
-	if !contains(err.Error(), "invalid transaction type") {
+	if !strings.Contains(err.Error(), "invalid transaction type") {
 		t.Errorf("expected invalid transaction type error, got: %v", err)
 	}
 }
 
 func TestRecordTransaction_ValidationErrors(t *testing.T) {
-	db := setupTestDB(t)
+	db := testutil.SetupPostgresTestDB(t)
 	ledger := NewTransactionLedger(db)
 	ctx := context.Background()
 
@@ -161,7 +163,7 @@ func TestRecordTransaction_ValidationErrors(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
-			if !contains(err.Error(), tc.errContains) {
+			if !strings.Contains(err.Error(), tc.errContains) {
 				t.Errorf("expected error containing %q, got: %v", tc.errContains, err)
 			}
 		})
@@ -169,7 +171,7 @@ func TestRecordTransaction_ValidationErrors(t *testing.T) {
 }
 
 func TestRecordTransaction_AutoComputeTotalValue(t *testing.T) {
-	db := setupTestDB(t)
+	db := testutil.SetupPostgresTestDB(t)
 	ledger := NewTransactionLedger(db)
 	ctx := context.Background()
 
@@ -207,7 +209,7 @@ func TestRecordTransaction_AutoComputeTotalValue(t *testing.T) {
 }
 
 func TestGetTransactionsBySymbol(t *testing.T) {
-	db := setupTestDB(t)
+	db := testutil.SetupPostgresTestDB(t)
 	ledger := NewTransactionLedger(db)
 	ctx := context.Background()
 

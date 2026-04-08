@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useI18n } from "@/context/I18nContext";
 
 interface FreshnessIndicatorProps {
   lastUpdated: Date | null;
@@ -10,15 +11,15 @@ interface FreshnessIndicatorProps {
 
 function getFreshnessColor(lastUpdated: Date | null): {
   color: string;
-  label: string;
+  labelKey: string;
 } {
-  if (!lastUpdated) return { color: "bg-zinc-500", label: "No data" };
+  if (!lastUpdated) return { color: "bg-zinc-500", labelKey: "common.no_data" };
   const ageMs = Date.now() - lastUpdated.getTime();
   const ONE_MIN = 60_000;
   const FIVE_MIN = 5 * 60_000;
-  if (ageMs < ONE_MIN) return { color: "bg-green-500", label: "Live" };
-  if (ageMs < FIVE_MIN) return { color: "bg-yellow-500", label: "Delayed" };
-  return { color: "bg-red-500", label: "Stale" };
+  if (ageMs < ONE_MIN) return { color: "bg-green-500", labelKey: "freshness.live" };
+  if (ageMs < FIVE_MIN) return { color: "bg-yellow-500", labelKey: "freshness.delayed" };
+  return { color: "bg-red-500", labelKey: "freshness.stale" };
 }
 
 export function FreshnessIndicator({
@@ -26,19 +27,21 @@ export function FreshnessIndicator({
   isStale,
   error,
 }: FreshnessIndicatorProps) {
-  const { color, label } = useMemo(
+  const { t } = useI18n();
+  const { color, labelKey } = useMemo(
     () => getFreshnessColor(lastUpdated),
     // re-evaluate every render since time changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [lastUpdated, Date.now()],
   );
 
+  const label = t(labelKey);
   const displayColor = error ? "bg-red-500" : isStale ? "bg-red-500" : color;
   const tooltip = error
     ? `Error — last update: ${lastUpdated?.toLocaleTimeString() ?? "never"}`
     : lastUpdated
       ? `${label} — ${lastUpdated.toLocaleTimeString()}`
-      : "No data yet";
+      : t("common.no_data");
 
   return (
     <span className="relative group inline-flex items-center" title={tooltip}>

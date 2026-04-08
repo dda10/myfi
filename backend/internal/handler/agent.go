@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"os"
 
-	"myfi-backend/internal/model"
-
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
@@ -21,6 +19,27 @@ import (
 	"github.com/tmc/langchaingo/llms/googleai"
 	"github.com/tmc/langchaingo/llms/openai"
 )
+
+// ChatRequest represents a chat request to the AI agent.
+type ChatRequest struct {
+	Message      string `json:"message"`
+	Symbol       string `json:"symbol"`
+	Provider     string `json:"provider"`
+	Model        string `json:"model"`
+	ApiKey       string `json:"apiKey"`
+	AwsAccessKey string `json:"awsAccessKey"`
+	AwsSecretKey string `json:"awsSecretKey"`
+	AwsRegion    string `json:"awsRegion"`
+}
+
+// ModelsRequest represents a request to list available models for a provider.
+type ModelsRequest struct {
+	Provider     string `json:"provider"`
+	ApiKey       string `json:"apiKey"`
+	AwsAccessKey string `json:"awsAccessKey"`
+	AwsSecretKey string `json:"awsSecretKey"`
+	AwsRegion    string `json:"awsRegion"`
+}
 
 // InitLLM initializes default required ENV vars checks or general startup logic.
 func (h *Handlers) InitLLM() {
@@ -129,7 +148,7 @@ func (h *Handlers) AnalyzeMarketData(ctx context.Context, symbol string) (string
 
 // HandleChat serves POST /api/chat — the main endpoint orchestrating the "multi-agent" pipeline.
 func (h *Handlers) HandleChat(c *gin.Context) {
-	var req model.ChatRequest
+	var req ChatRequest
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request format."})
 		return
@@ -187,7 +206,7 @@ CONTEXT:
 
 // HandleModels serves POST /api/models — fetches available models for a given provider.
 func (h *Handlers) HandleModels(c *gin.Context) {
-	var req model.ModelsRequest
+	var req ModelsRequest
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request format"})
 		return

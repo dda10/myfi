@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageSquare, X, Send, Bot, User, Loader2, TrendingUp, TrendingDown, Minus, Newspaper, Lightbulb, BarChart3 } from "lucide-react";
+import { MessageSquare, X, Send, Bot, User, Loader2, TrendingUp, TrendingDown, Minus, Newspaper, Lightbulb, BarChart3, AlertTriangle, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ProactiveSuggestions } from "@/features/chat/components/ProactiveSuggestions";
 
 // --- Types ---
 
@@ -54,6 +55,13 @@ interface StructuredResponse {
   advice?: AdviceData;
   symbols?: string[];
   confidence?: number;
+  citations?: CitationLink[];
+  tokenUsage?: { used: number; budget: number };
+}
+
+interface CitationLink {
+  label: string;
+  url: string;
 }
 
 interface HistoryEntry {
@@ -215,6 +223,45 @@ function TypingIndicator() {
   );
 }
 
+// --- Citation links ---
+
+function CitationsSection({ citations }: { citations: CitationLink[] }) {
+  return (
+    <div className="space-y-1 mt-2">
+      <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium uppercase tracking-wide">
+        <ExternalLink size={12} /> Sources
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {citations.map((c, i) => (
+          <a
+            key={i}
+            href={c.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 px-2 py-0.5 rounded-full transition inline-flex items-center gap-1"
+          >
+            <ExternalLink size={9} />
+            {c.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Token budget warning ---
+
+function TokenBudgetWarning({ used, budget }: { used: number; budget: number }) {
+  const pct = budget > 0 ? (used / budget) * 100 : 0;
+  if (pct < 80) return null;
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-2.5 py-1.5 mx-3 mb-1">
+      <AlertTriangle size={12} />
+      <span>Token usage: {Math.round(pct)}% — approaching limit</span>
+    </div>
+  );
+}
+
 
 // --- Parse backend response ---
 
@@ -241,6 +288,12 @@ function parseResponse(data: Record<string, unknown>): { content: string; struct
     if (typeof data.confidence === "number") {
       structured.confidence = data.confidence;
     }
+    if (data.citations && Array.isArray(data.citations)) {
+      structured.citations = data.citations as CitationLink[];
+    }
+    if (data.tokenUsage && typeof data.tokenUsage === "object") {
+      structured.tokenUsage = data.tokenUsage as { used: number; budget: number };
+    }
 
     const summary = typeof data.reply === "string" ? data.reply : typeof data.summary === "string" ? data.summary : "";
     return { content: summary, structured };
@@ -263,6 +316,7 @@ export function ChatWidget() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [tokenUsage, setTokenUsage] = useState<{ used: number; budget: number } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -353,6 +407,10 @@ export function ChatWidget() {
       const data = await response.json();
       const { content, structured } = parseResponse(data);
 
+      if (structured?.tokenUsage) {
+        setTokenUsage(structured.tokenUsage);
+      }
+
       setMessages(prev => {
         const updated = [...prev];
         // Replace typing indicator
@@ -433,7 +491,7 @@ export function ChatWidget() {
                   <Bot size={18} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white">MyFi Advisor AI</h3>
+                  <h3 className="font-semibold text-white">EziStock AI Advisor</h3>
                   <p className="text-xs text-green-400">Online</p>
                 </div>
               </div>
@@ -444,6 +502,10 @@ export function ChatWidget() {
 
             {/* Chat messages area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {/* Proactive suggestions when no user messages yet */}
+              {messages.length <= 1 && !isLoading && (
+                <ProactiveSuggestions onSelect={(text) => { setInput(text); }} />
+              )}
               <AnimatePresence initial={false}>
                 {messages.map((msg, i) => (
                   <motion.div
@@ -481,6 +543,9 @@ export function ChatWidget() {
                               {msg.structured.advice && (
                                 <AdviceSection advice={msg.structured.advice} />
                               )}
+                              {msg.structured.citations && msg.structured.citations.length > 0 && (
+                                <CitationsSection citations={msg.structured.citations} />
+                              )}
                             </div>
                           )}
                         </>
@@ -491,6 +556,9 @@ export function ChatWidget() {
               </AnimatePresence>
               <div ref={chatEndRef} />
             </div>
+
+            {/* Token budget warning */}
+            {tokenUsage && <TokenBudgetWarning used={tokenUsage.used} budget={tokenUsage.budget} />}
 
             {/* Input area */}
             <div className="p-3 bg-zinc-800/50 border-t border-zinc-700/50">

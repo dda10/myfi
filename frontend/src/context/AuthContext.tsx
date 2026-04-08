@@ -10,31 +10,49 @@ interface User {
   id: number;
   username: string;
   email?: string;
+  disclaimerAcknowledged?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  disclaimerAcknowledged: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  acknowledgeDisclaimer: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const DISCLAIMER_STORAGE_KEY = "ezistock-disclaimer-ack";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(false);
 
   // Install global fetch interceptor to auto-inject JWT token
   useEffect(() => {
     installFetchInterceptor();
   }, []);
 
+  // Load disclaimer acknowledgment from localStorage on mount
+  useEffect(() => {
+    try {
+      const ack = localStorage.getItem(DISCLAIMER_STORAGE_KEY);
+      if (ack === "true") {
+        setDisclaimerAcknowledged(true);
+      }
+    } catch {
+      // localStorage unavailable
+    }
+  }, []);
+
   const checkAuth = useCallback(async () => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("myfi-token") : null;
+      const token = typeof window !== "undefined" ? localStorage.getItem("ezistock-token") : null;
       if (!token) { setUser(null); setIsLoading(false); return; }
       const res = await fetch(`${API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -42,9 +60,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (res.ok) {
         const data = await res.json();
-        setUser(data.user ?? data);
+        const userData = data.user ?? data;
+        setUser(userData);
+        // If backend returns disclaimer status, sync it
+        if (userData.disclaimerAcknowledged) {
+          setDisclaimerAcknowledged(true);
+          try { localStorage.setItem(DISCLAIMER_STORAGE_KEY, "true"); } catch { /* noop */ }
+        }
       } else {
-        localStorage.removeItem("myfi-token");
+        localStorage.removeItem("ezistock-token");
         setUser(null);
       }
     } catch {
@@ -72,10 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     // Store JWT token for use in API requests
     if (data.token) {
-      localStorage.setItem("myfi-token", data.token);
+      localStorage.setItem("ezistock-token", data.token);
     }
     if (data.user) {
       setUser(data.user);
+      if (data.user.disclaimerAcknowledged) {
+        setDisclaimerAcknowledged(true);
+        try { localStorage.setItem(DISCLAIMER_STORAGE_KEY, "true"); } catch { /* noop */ }
+      }
     } else {
       await checkAuth();
     }
@@ -83,15 +111,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("myfi-token") : null;
+      const token = typeof window !== "undefined" ? localStorage.getItem("ezistock-token") : null;
       await fetch(`${API_URL}/api/auth/logout`, {
         method: "POST",
         credentials: "include",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
     } finally {
-      localStorage.removeItem("myfi-token");
+      localStorage.removeItem("ezistock-token");
       setUser(null);
+    }
+  }, []);
+
+  /**
+   * Acknowledge the investment disclaimer (Req 49.2).
+   * Persists to backend and localStorage so the user isn't asked again.
+   */
+  const acknowledgeDisclaimer = useCallback(async () => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("ezistock-token") : null;
+      if (token) {
+        // Best-effort call to backend to persist acknowledgment
+        await fetch(`${API_URL}/api/auth/disclaimer`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+          body: JSON.stringify({ acknowledged: true }),
+        }).catch(() => { /* backend may not have this endpoint yet */ });
+      }
+    } finally {
+      setDisclaimerAcknowledged(true);
+      try { localStorage.setItem(DISCLAIMER_STORAGE_KEY, "true"); } catch { /* noop */ }
+      // Update user object
+      setUser((prev) => prev ? { ...prev, disclaimerAcknowledged: true } : prev);
     }
   }, []);
 
@@ -101,9 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: user !== null,
         isLoading,
+        disclaimerAcknowledged,
         login,
         logout,
         checkAuth,
+        acknowledgeDisclaimer,
       }}
     >
       {children}
@@ -121,7 +178,7 @@ export function useAuth() {
 
 /**
  * Wraps children and redirects to /login when no valid session exists.
- * Requirement 36.4: display login screen and prevent access when no valid session.
+ * Requirement 29.4: display login screen and prevent access when no valid session.
  */
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();

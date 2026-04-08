@@ -1,15 +1,8 @@
 @import "tailwindcss";
 
 /*
- * Theme color tokens — WCAG AA compliant
- * Light mode: dark text on light bg  (contrast ≥ 4.5:1 normal, ≥ 3:1 large)
- * Dark mode:  light text on dark bg
- *
- * Key contrast ratios verified:
- *   Light: --foreground #171717 on --background #ffffff = 18.1:1
- *   Dark:  --foreground #ededed on --background #0a0a0a = 17.4:1
- *   Light muted: --text-muted #525252 on #ffffff = 7.4:1
- *   Dark muted:  --text-muted #a1a1aa on #0a0a0a = 8.5:1
+ * MiQuant-inspired Design System
+ * Premium dark theme — tight, dense, professional financial UI
  */
 
 :root {
@@ -22,7 +15,7 @@
   --accent: #6366f1;
   --accent-hover: #4f46e5;
   --card-bg: #ffffff;
-  --header-bg: rgba(255, 255, 255, 0.8);
+  --header-bg: rgba(255, 255, 255, 0.92);
   --sidebar-bg: #fafafa;
   --input-bg: #f4f4f5;
   --badge-bg: #e4e4e7;
@@ -35,18 +28,18 @@
 .dark {
   --background: #0a0a0a;
   --foreground: #ededed;
-  --surface: #18181b;
-  --surface-hover: #27272a;
-  --border: #27272a;
-  --text-muted: #a1a1aa;
+  --surface: #141414;
+  --surface-hover: #1f1f1f;
+  --border: #1f1f1f;
+  --text-muted: #71717a;
   --accent: #818cf8;
   --accent-hover: #6366f1;
-  --card-bg: #18181b;
-  --header-bg: rgba(0, 0, 0, 0.5);
+  --card-bg: #111111;
+  --header-bg: rgba(0, 0, 0, 0.92);
   --sidebar-bg: #000000;
-  --input-bg: #18181b;
-  --badge-bg: #27272a;
-  --badge-text: #d4d4d8;
+  --input-bg: #141414;
+  --badge-bg: #1f1f1f;
+  --badge-text: #a1a1aa;
   --positive: #22c55e;
   --negative: #ef4444;
   --ring: #818cf8;
@@ -70,12 +63,88 @@
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-ring: var(--ring);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Touch target utility */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* MiQuant-style thin scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Panel custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+
+/* HOT badge */
+.badge-hot {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+/* NEW badge */
+.badge-new {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #818cf8, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Fade in animation */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.25s ease-out; }
+
+/* Slide in left */
+@keyframes slide-in-left {
+  from { transform: translateX(-8px); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+.animate-slide-in { animation: slide-in-left 0.2s ease-out; }
+
+/* Upside percent utility classes */
+.upside-high { color: #22c55e; }
+.upside-mid  { color: #86efac; }
+.upside-zero { color: #71717a; }
+.upside-neg  { color: #ef4444; }

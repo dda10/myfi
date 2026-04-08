@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,26 +32,24 @@ func genPrice() *rapid.Generator[float64] {
 	return rapid.Float64Range(1, 100_000_000)
 }
 
-func newPropEngine(db *sql.DB) (*PortfolioEngine, *AssetRegistry) {
+func newPropEngine(db *sql.DB) (*PortfolioEngine, HoldingStore) {
 	// Clean data tables so each rapid iteration starts fresh.
 	// Order matters due to foreign key constraints.
 	for _, tbl := range []string{"transactions", "assets", "savings_accounts"} {
 		db.Exec("DELETE FROM " + tbl)
 	}
-	reg := NewAssetRegistry(db, nil)
+	store := newDBHoldingStore(db)
 	ledger := NewTransactionLedger(db)
-	engine := NewPortfolioEngine(reg, ledger, nil)
-	return engine, reg
+	engine := NewPortfolioEngine(store, ledger, nil)
+	return engine, store
 }
 
 // --- Property 14: Buy Transaction Double-Entry ---
-// For any sequence of buys on the same symbol, the holding quantity equals the
-// sum of buy quantities, and average cost equals the weighted average.
 
 func TestProperty14_BuyTransactionDoubleEntry(t *testing.T) {
 	db := testutil.SetupPostgresTestDB(t)
 	rapid.Check(t, func(t *rapid.T) {
-		engine, registry := newPropEngine(db)
+		engine, store := newPropEngine(db)
 		ctx := context.Background()
 
 		assetType := genAssetType().Draw(t, "assetType")
@@ -69,7 +68,7 @@ func TestProperty14_BuyTransactionDoubleEntry(t *testing.T) {
 			totalCost += qty * price
 		}
 
-		assets, err := registry.GetAssetsByUser(ctx, 1)
+		assets, err := store.GetAssetsByUser(ctx, 1)
 		if err != nil {
 			t.Fatalf("GetAssetsByUser: %v", err)
 		}
@@ -84,11 +83,9 @@ func TestProperty14_BuyTransactionDoubleEntry(t *testing.T) {
 			t.Fatal("holding not found after buys")
 		}
 
-		// Property: quantity == sum of all buy quantities
 		if math.Abs(found.Quantity-totalQty) > 1e-6 {
 			t.Errorf("quantity: got %f, want %f", found.Quantity, totalQty)
 		}
-		// Property: average cost == weighted average
 		expectedAvg := totalCost / totalQty
 		if math.Abs(found.AverageCost-expectedAvg)/expectedAvg > 1e-9 {
 			t.Errorf("avg cost: got %f, want %f", found.AverageCost, expectedAvg)
@@ -97,13 +94,11 @@ func TestProperty14_BuyTransactionDoubleEntry(t *testing.T) {
 }
 
 // --- Property 15: Sell Transaction P&L Computation ---
-// Realized P&L = (sellPrice - weightedAvgCost) * sellQty.
-// Remaining holding preserves the original average cost.
 
 func TestProperty15_SellTransactionPLComputation(t *testing.T) {
 	db := testutil.SetupPostgresTestDB(t)
 	rapid.Check(t, func(t *rapid.T) {
-		engine, registry := newPropEngine(db)
+		engine, store := newPropEngine(db)
 		ctx := context.Background()
 
 		assetType := genAssetType().Draw(t, "assetType")
@@ -132,15 +127,13 @@ func TestProperty15_SellTransactionPLComputation(t *testing.T) {
 			t.Fatalf("ProcessSell failed: %v", err)
 		}
 
-		// Property: realized P&L = (sellPrice - avgCost) * sellQty
 		expectedPL := (sellPrice - weightedAvgCost) * sellQty
 		relErr := math.Abs(result.RealizedPL-expectedPL) / math.Max(1, math.Abs(expectedPL))
 		if relErr > 1e-6 {
 			t.Errorf("P&L: got %f, want %f", result.RealizedPL, expectedPL)
 		}
 
-		// Property: avg cost unchanged after sell
-		assets, _ := registry.GetAssetsByUser(ctx, 1)
+		assets, _ := store.GetAssetsByUser(ctx, 1)
 		var found *model.Asset
 		for i := range assets {
 			if assets[i].Symbol == symbol && assets[i].AssetType == assetType {
@@ -161,7 +154,6 @@ func TestProperty15_SellTransactionPLComputation(t *testing.T) {
 }
 
 // --- Property 16: Unrealized P&L Calculation ---
-// unrealized P&L = (currentPrice - avgCost) * qty; sign matches price direction.
 
 func TestProperty16_UnrealizedPLCalculation(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
@@ -169,7 +161,7 @@ func TestProperty16_UnrealizedPLCalculation(t *testing.T) {
 		avgCost := genPrice().Draw(t, "avgCost")
 		currentPrice := genPrice().Draw(t, "currentPrice")
 
-		engine := &PortfolioEngine{} // no DB needed for pure computation
+		engine := &PortfolioEngine{}
 		holding := model.Asset{Quantity: qty, AverageCost: avgCost}
 		uPL, uPLPct := engine.ComputeUnrealizedPL(holding, currentPrice)
 
@@ -194,7 +186,6 @@ func TestProperty16_UnrealizedPLCalculation(t *testing.T) {
 }
 
 // --- Property 17: NAV Aggregation ---
-// NAV = sum(qty * price) for all holdings. Non-negative when all inputs positive.
 
 func TestProperty17_NAVAggregation(t *testing.T) {
 	db := testutil.SetupPostgresTestDB(t)
@@ -245,7 +236,6 @@ func TestProperty17_NAVAggregation(t *testing.T) {
 }
 
 // --- Property 18: Insufficient Holdings Rejection ---
-// Selling non-existent or over-quantity holdings always returns "insufficient holdings".
 
 func TestProperty18_InsufficientHoldingsRejection(t *testing.T) {
 	db := testutil.SetupPostgresTestDB(t)
@@ -262,7 +252,7 @@ func TestProperty18_InsufficientHoldingsRejection(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error selling non-existent holding")
 		}
-		if !contains(err.Error(), "insufficient holdings") {
+		if !strings.Contains(err.Error(), "insufficient holdings") {
 			t.Errorf("want 'insufficient holdings', got: %v", err)
 		}
 
@@ -281,7 +271,7 @@ func TestProperty18_InsufficientHoldingsRejection(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected error selling %f, hold %f", oversellQty, buyQty)
 		}
-		if !contains(err.Error(), "insufficient holdings") {
+		if !strings.Contains(err.Error(), "insufficient holdings") {
 			t.Errorf("want 'insufficient holdings', got: %v", err)
 		}
 	})

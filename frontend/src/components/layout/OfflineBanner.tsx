@@ -31,7 +31,7 @@ interface OfflineBannerProps {
 
 export function OfflineBanner({ onReconnect }: OfflineBannerProps) {
   const { isOnline, sourceHealth, lastFetchedAt } = useOnlineStatus(onReconnect);
-  const { formatTime } = useI18n();
+  const { t, formatTime } = useI18n();
 
   // Req 34.2: persistent "Offline Mode" banner when offline
   if (!isOnline) {
@@ -39,8 +39,8 @@ export function OfflineBanner({ onReconnect }: OfflineBannerProps) {
       <div className="w-full bg-red-900/80 border-b border-red-700 px-4 py-2 flex items-center justify-between" role="alert">
         <div className="flex items-center gap-2">
           <WifiOff size={16} className="text-red-300" />
-          <span className="text-red-100 text-sm font-medium">Offline Mode</span>
-          <span className="text-red-300 text-xs">— Showing cached data</span>
+          <span className="text-red-100 text-sm font-medium">{t("offline.banner")}</span>
+          <span className="text-red-300 text-xs">— {t("offline.cached_data")}</span>
         </div>
         {/* Req 34.7: timestamp of last successful fetch */}
         {lastFetchedAt && (

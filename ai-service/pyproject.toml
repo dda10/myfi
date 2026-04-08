@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ezistock-ai"
+version = "0.1.0"
+description = "EziStock AI Service — Multi-agent AI system and Alpha Mining engine for Vietnamese stock analysis"
+requires-python = ">=3.11"
+dependencies = [
+    # Web / gRPC
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "grpcio>=1.68.0",
+    "grpcio-tools>=1.68.0",
+    "protobuf>=5.29.0",
+    # AI / LLM
+    "langchain>=0.3.0",
+    "langgraph>=0.2.0",
+    "langchain-openai>=0.2.0",
+    "langchain-anthropic>=0.3.0",
+    "langchain-google-genai>=2.0.0",
+    # Data / ML
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "scikit-learn>=1.5.0",
+    "pyarrow>=18.0.0",
+    "duckdb>=1.1.0",
+    # Infrastructure
+    "boto3>=1.35.0",
+    "psycopg[binary]>=3.2.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "hypothesis>=6.115.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ezistock_ai"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
